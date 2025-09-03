@@ -76,13 +76,6 @@ No build step or dependencies required.
 
 ---
 
-## 📸 Preview  
-
-![Game Screenshot](https://via.placeholder.com/900x500.png?text=CQ+-+Timeless+Game+Preview)  
-*(Replace with actual screenshot)*  
-
----
-
 ## 🛠️ Tech Stack  
 
 - **HTML5**  
