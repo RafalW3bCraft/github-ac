@@ -412,21 +412,19 @@ function buildReels(){
   });
 }
 function yFromRow(r){ return r* (CELL_H+0) }
-function captureGrid(){
+function captureGrid() {
   grid = [];
-  for(let c=0;c<COLS;c++){
-    // read 3 visible at a calculated offset
-    const t = parseFloat(getComputedStyle(strips[c].el).transform.split(',')[5]) || 0;
-    const off = Math.round(Math.abs(t)/CELL_H)%strips[c].tall.length;
-    const arr=[];
-    for(let r=0;r<ROWS;r++){
-      const idx = (off+r)%strips[c].tall.length;
-      arr.push(strips[c].tall[idx]);
+  for (let c = 0; c < COLS; c++) {
+    const reel = strips[c];
+    const transY = reel.offset % reel.tall.length;
+    const arr = [];
+    for (let r = 0; r < ROWS; r++) {
+      const idx = (transY + r) % reel.tall.length;
+      arr.push(reel.tall[idx]);
     }
-    grid.push(arr); // column-wise
+    grid.push(arr);
   }
 }
-
 function displayWin(lines, totalMul){
   // glow boxes on winning cells + payout text + confetti
   document.querySelectorAll('.cell').forEach(c=>c.classList.remove('winCell'));
@@ -547,27 +545,33 @@ async function spinOnce(){
   else setStatus('Ready');
 }
 
-function spinReel(idx, stopIndex, duration){
-  return new Promise(res=>{
+function spinReel(idx, stopIndex, duration) {
+  return new Promise(res => {
     const strip = strips[idx];
     const len = strip.tall.length;
-    // current offset
-    const curY = parseFloat(getComputedStyle(strip.el).transform.split(',')[5])||0;
-    // we’ll spin forward several loops then land so that the top cell aligns to stopIndex
-    const totalLoops = 2 + idx; // staggered extra loops
-    const targetY = -((stopIndex) * CELL_H);
-    const extra = -(len*CELL_H*totalLoops);
-    const endY = targetY + extra;
 
-    const start=performance.now();
-    const easeOutCubic = x=>1-Math.pow(1-x,3);
-    function anim(t){
-      const p=clamp((t-start)/duration, 0, 1);
-      const y = curY + (endY-curY)*easeOutCubic(p);
+    // compute final Y offset
+    const loops = 2 + idx; // stagger reels
+    const finalOffset = stopIndex;
+    const totalShift = loops * len + finalOffset;
+
+    strip.offset = finalOffset;
+
+    const start = performance.now();
+    const easeOut = x => 1 - Math.pow(1 - x, 3);
+
+    function anim(t) {
+      const p = clamp((t - start) / duration, 0, 1);
+      const shift = Math.floor(totalShift * easeOut(p));
+      const y = -(shift % len) * CELL_H;
       strip.el.style.transform = `translateY(${y}px)`;
-      // sparks while spinning
-      if(Math.random()<.12) spark(reelsEl, idx);
-      if(p<1) requestAnimationFrame(anim); else { res(); }
+
+      if (p < 1) requestAnimationFrame(anim);
+      else {
+        // snap to exact position
+        strip.el.style.transform = `translateY(${-finalOffset * CELL_H}px)`;
+        res();
+      }
     }
     requestAnimationFrame(anim);
   });
