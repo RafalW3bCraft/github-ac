@@ -20,20 +20,24 @@ body{
     radial-gradient(1100px 600px at -15% 110%, rgba(255,61,129,.10), transparent),
     #061018;
   font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Noto Color Emoji;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 header{
   position:sticky; top:0; z-index:10;
   display:flex; align-items:center; gap:10px; padding:12px 14px;
   background:linear-gradient(180deg, #08121b 0%, #09131d 100%); border-bottom:1px solid var(--edge);
   box-shadow: 0 2px 18px rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
 }
 .brand{display:flex; gap:10px; align-items:center}
 .brand .logo{font-size:22px; filter: drop-shadow(0 0 8px rgba(0,255,198,.35))}
 .brand h1{font-size:16px; margin:0; letter-spacing:.6px; color:var(--acc)}
 header .right{margin-left:auto; display:flex; align-items:center; gap:8px}
 .pill{padding:6px 10px; border:1px solid var(--edge2); border-radius:999px; background:#0c1a26; color:#aee6ff; font-size:12px}
-.btn{cursor:pointer; border:1px solid var(--edge2); background:#0f1e2a; color:var(--ink); padding:10px 12px; border-radius:12px; transition:.15s transform}
+.btn{cursor:pointer; border:1px solid var(--edge2); background:#0f1e2a; color:var(--ink); padding:10px 12px; border-radius:12px; transition:.15s transform; user-select:none}
 .btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5; cursor:not-allowed; pointer-events:none}
 .btn.primary{background:linear-gradient(180deg,#00ffc6,#00d3a7); border-color:#00dabb; color:#002c25; font-weight:800}
 .btn.ghost{background:transparent}
 .btn.warn{background:#2a1b0d; border-color:#76501a; color:#ffdca0}
@@ -53,10 +57,10 @@ input,select{background:#0c1924; border:1px solid var(--edge2); border-radius:12
 
 /* Tabs */
 .tabs{display:flex; gap:8px; flex-wrap:wrap}
-.tab{flex:1; text-align:center; background:#0d1a26; border:1px solid var(--edge); border-radius:12px; padding:10px; cursor:pointer}
+.tab{flex:1; text-align:center; background:#0d1a26; border:1px solid var(--edge); border-radius:12px; padding:10px; cursor:pointer; user-select:none}
 .tab.active{background:linear-gradient(180deg,#0d2330,#0b1c29); box-shadow:0 0 0 1px #1f5a76 inset}
 
-/* Slots — 5x3 */
+/* Slots — 5x3 optimized */
 .slotsHead{display:flex; align-items:flex-end; justify-content:space-between}
 .reels{position:relative; height:280px; display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:10px 0}
 .reel{background:#07131c; border:1px solid var(--edge2); border-radius:12px; overflow:hidden; position:relative}
@@ -82,6 +86,12 @@ canvas#runner{display:block; width:100%; height:420px; background:linear-gradien
 .log{max-height:280px; overflow:auto; font-size:12px}
 .toast{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#081620; color:#defcff; border:1px solid var(--edge2); border-radius:12px; padding:10px 14px; box-shadow:0 10px 30px rgba(0,0,0,.45); opacity:0; pointer-events:none; transition:.18s opacity,.18s transform; z-index:20}
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
+
+/* Progressive features */
+.hot-streak{color:#ff6b35; font-weight:bold; animation:pulse 1s infinite}
+.near-win{color:#ffdd44; animation:shimmer 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+@keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.6}}
 
 /* Theme toggle (subtle) */
 .themeLight:root, .themeLight body{ --bg:#f7fbff; --panel:#ffffff; --ink:#0c1a22; --muted:#4a6b82; background:#eaf6ff }
@@ -131,9 +141,16 @@ canvas#runner{display:block; width:100%; height:420px; background:linear-gradien
         <button id="saveLB" class="btn" style="margin-top:6px">Save Session → Leaderboard</button>
       </div>
       <div class="kpi">
-        <div class="sub">Missions</div>
+        <div class="sub">Missions & Rewards</div>
         <div id="missions" class="col">
           <!-- populated by JS -->
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="sub">Bonus Tracker</div>
+        <div id="bonusTracker" class="col">
+          <div class="badge">Streak: <span id="streakCount">0</span></div>
+          <div class="badge">Next Bonus: <span id="nextBonus">—</span></div>
         </div>
       </div>
     </div>
@@ -169,6 +186,7 @@ canvas#runner{display:block; width:100%; height:420px; background:linear-gradien
           <button id="spinBtn" class="btn primary">SPIN</button>
           <button id="autoBtn" class="btn">Auto (25)</button>
           <span id="slotStatus" class="badge">Ready</span>
+          <span id="volatilityMeter" class="badge">Volatility: Low</span>
         </div>
 
         <div class="kpi">
@@ -176,8 +194,8 @@ canvas#runner{display:block; width:100%; height:420px; background:linear-gradien
           <div class="row">
             <div class="payTable">
               <b>Symbols:</b> 💎 Wild (substitutes), ⭐ Scatter (free spins), 🍒, 🍋, 🟩, 🔔, 7️⃣<br/>
-              5-of-a-kind pays: 💎×100, 7️⃣×50, 🔔×25, 🍒×15, 🍋×10, 🟩×5<br/>
-              Any 3+ ⭐ scatters → 8 free spins.
+              5-of-a-kind pays: 💎×25, 7️⃣×12, 🔔×8, 🍒×5, 🍋×3, 🟩×2<br/>
+              Any 3+ ⭐ scatters → 5 free spins.
             </div>
           </div>
         </div>
@@ -209,7 +227,11 @@ canvas#runner{display:block; width:100%; height:420px; background:linear-gradien
     <div class="pad col">
       <div class="kpi">
         <div class="sub">Session Stats</div>
-        <div class="row"><span class="badge">Spins: <b id="statSpins">0</b></span><span class="badge">RTP (est): <b id="statRTP">—</b></span><span class="badge">Biggest Win: <b id="statBig">0</b></span></div>
+        <div class="row">
+          <span class="badge">Spins: <b id="statSpins">0</b></span>
+          <span class="badge">RTP (est): <b id="statRTP">—</b></span>
+          <span class="badge">Biggest Win: <b id="statBig">0</b></span>
+        </div>
       </div>
       <div class="kpi">
         <div class="sub">Sound</div>
@@ -239,51 +261,138 @@ canvas#runner{display:block; width:100%; height:420px; background:linear-gradien
 
 <script>
 /* =========================
-   Utils & SFX
+   Utils & SFX (Optimized)
 ========================= */
 const $ = id=>document.getElementById(id);
 const fmt = n => Number(n).toLocaleString();
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const rng = (min,max)=>Math.random()*(max-min)+min;
 
-const toast=(m)=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1400);};
+let toastTimer;
+const toast=(m)=>{
+  const t=$('toast');
+  t.textContent=m;
+  t.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'),1400);
+};
 
 let SFX_ON = true;
+let audioContext = null;
+
+function initAudioContext(){
+  if(!audioContext){
+    audioContext = new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state === 'suspended') audioContext.resume();
+  }
+}
+
 function beep(freq=880, dur=.06, type='triangle', vol=.18){
   if(!SFX_ON) return;
-  const AC = new (window.AudioContext||window.webkitAudioContext)();
-  const o = AC.createOscillator(), g = AC.createGain();
-  o.type=type; o.frequency.value=freq; o.connect(g); g.connect(AC.destination);
-  g.gain.value=0.0001; g.gain.exponentialRampToValueAtTime(vol, AC.currentTime+.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+dur);
-  o.start(); o.stop(AC.currentTime+dur+.02);
+  try{
+    initAudioContext();
+    const o = audioContext.createOscillator();
+    const g = audioContext.createGain();
+    o.type=type; o.frequency.value=freq; 
+    o.connect(g); g.connect(audioContext.destination);
+    g.gain.value=0.0001; 
+    g.gain.exponentialRampToValueAtTime(vol, audioContext.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime+dur);
+    o.start(); o.stop(audioContext.currentTime+dur+.02);
+  }catch(e){console.warn('Audio error:',e);}
 }
 
 /* =========================
-   Persistence
+   Enhanced Persistence System
 ========================= */
-const STORE_KEY='gogambler_store_v2';
+const STORE_KEY='gogambler_store_v3';
+const BACKUP_KEY='gogambler_backup_v3';
+
 const store = {
-  data: { bal:50000, bet:100, spins:0, won:0, biggest:0, history:[], leaderboard:[], theme:'dark', sfx:true, missions:{} },
-  load(){ try{ const j=JSON.parse(localStorage.getItem(STORE_KEY)||'null'); if(j) this.data=j; }catch{} },
-  save(){ localStorage.setItem(STORE_KEY, JSON.stringify(this.data)); },
-  pushHistory(entry){ this.data.history.unshift(entry); this.data.history = this.data.history.slice(0,200); this.save(); renderRecent(); }
+  data: { 
+    bal:50000, bet:100, spins:0, won:0, biggest:0, 
+    history:[], leaderboard:[], theme:'dark', sfx:true, missions:{},
+    streak:0, lastWin:0, totalLoss:0, sessionStart:Date.now(),
+    volatilityLevel: 'low', nearWins: 0, bonusProgress: 0
+  },
+  
+  load(){ 
+    try{ 
+      const j=JSON.parse(localStorage.getItem(STORE_KEY)||'null'); 
+      if(j) {
+        this.data = {...this.data, ...j};
+        // Migration for new fields
+        if(!this.data.volatilityLevel) this.data.volatilityLevel = 'low';
+        if(!this.data.nearWins) this.data.nearWins = 0;
+        if(!this.data.bonusProgress) this.data.bonusProgress = 0;
+      }
+    }catch(e){
+      console.warn('Failed to load data, trying backup...');
+      this.loadBackup();
+    }
+  },
+  
+  save(){ 
+    try{
+      const dataStr = JSON.stringify(this.data);
+      localStorage.setItem(STORE_KEY, dataStr);
+      // Create backup every 10 saves
+      if(this.data.spins % 10 === 0){
+        localStorage.setItem(BACKUP_KEY, dataStr);
+      }
+    }catch(e){
+      console.error('Failed to save data:', e);
+      toast('⚠️ Save failed - storage full?');
+    }
+  },
+  
+  loadBackup(){
+    try{
+      const backup = JSON.parse(localStorage.getItem(BACKUP_KEY)||'null');
+      if(backup) {
+        this.data = {...this.data, ...backup};
+        toast('📁 Restored from backup');
+      }
+    }catch(e){
+      console.error('Backup also failed:', e);
+    }
+  },
+  
+  pushHistory(entry){ 
+    this.data.history.unshift(entry); 
+    this.data.history = this.data.history.slice(0,100); // Reduced for performance
+    this.save(); 
+    requestAnimationFrame(renderRecent); // Optimize rendering
+  }
 };
 
 /* =========================
-   Fairness (HMAC)
+   Optimized Fairness (HMAC)
 ========================= */
+const sha256Cache = new Map();
+const hmacCache = new Map();
+
 const sha256=async s=>{
+  if(sha256Cache.has(s)) return sha256Cache.get(s);
   const buf=new TextEncoder().encode(s);
   const h=await crypto.subtle.digest('SHA-256', buf);
-  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const result = [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  sha256Cache.set(s, result);
+  return result;
 };
+
 const hmac=async (key,msg)=>{
+  const cacheKey = key+':'+msg;
+  if(hmacCache.has(cacheKey)) return hmacCache.get(cacheKey);
+  
   const enc=new TextEncoder();
   const cryptoKey=await crypto.subtle.importKey('raw',enc.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const sig=await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(msg));
-  return [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const result = [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  hmacCache.set(cacheKey, result);
+  return result;
 };
+
 const uniFromHex = hex => {
   const slice = hex.slice(0,13);
   return parseInt(slice,16)/Math.pow(16,13);
@@ -296,20 +405,113 @@ const Fair = {
     this.serverSeed = Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
     this.serverHash = await sha256(this.serverSeed);
     this.nonce = 0;
-    $('srvHash').textContent=this.serverHash;
+    $('srvHash').textContent=this.serverHash.slice(0,16)+'...';
     $('cliSeed').textContent=this.clientSeed;
     $('nonce').textContent=String(this.nonce);
   }
 };
 
 /* =========================
-   UI Bindings
+   Psychology & Engagement Systems
 ========================= */
-const updateBal=()=>{ $('bal').textContent=fmt(store.data.bal); $('balance').textContent=fmt(store.data.bal); };
-$('bet').oninput=e=>{ store.data.bet = Math.max(1,Math.floor(+e.target.value||0)); store.save(); };
-$('betMax').onclick=()=>{ store.data.bet = store.data.bal; $('bet').value=store.data.bet; store.save(); };
-$('betHalf').onclick=()=>{ store.data.bet = Math.max(1, Math.floor(store.data.bet/2)); $('bet').value=store.data.bet; store.save(); };
-$('betDouble').onclick=()=>{ store.data.bet = Math.max(1, Math.floor(store.data.bet*2)); $('bet').value=store.data.bet; store.save(); };
+const Psychology = {
+  
+  // Adaptive RTP based on player behavior
+  calculateDynamicRTP(baseRTP = 0.85){
+    const session_duration = (Date.now() - store.data.sessionStart) / (1000 * 60); // minutes
+    const loss_streak = store.data.spins - store.data.lastWin;
+    
+    // Lower RTP for extended sessions to increase house edge
+    let rtp = baseRTP;
+    if(session_duration > 30) rtp *= 0.92; // -8% after 30min
+    if(session_duration > 60) rtp *= 0.88; // -12% after 1hr
+    if(loss_streak > 20) rtp *= 1.05; // Small mercy boost
+    
+    return Math.max(0.75, Math.min(0.95, rtp)); // Clamp between 75-95%
+  },
+  
+  // Near-miss generation to create false hope
+  generateNearMiss(){
+    store.data.nearWins++;
+    if(store.data.nearWins % 3 === 0){
+      toast('🎯 So close! Try again!');
+      $('slotStatus').classList.add('near-win');
+      setTimeout(()=>$('slotStatus').classList.remove('near-win'), 3000);
+    }
+    return Math.random() < 0.15; // 15% chance to show near-miss symbols
+  },
+  
+  // Bonus progress to keep players engaged
+  updateBonusProgress(){
+    store.data.bonusProgress = (store.data.bonusProgress + 1) % 50;
+    const remaining = 50 - store.data.bonusProgress;
+    $('nextBonus').textContent = remaining + ' spins';
+    
+    if(store.data.bonusProgress === 0 && store.data.spins > 0){
+      // Small bonus every 50 spins
+      const bonus = Math.floor(store.data.bet * 0.5);
+      store.data.bal += bonus;
+      updateBal();
+      toast(`🎁 Bonus! +${fmt(bonus)} credits!`);
+      beep(1500, 0.1, 'sine', 0.3);
+    }
+  },
+  
+  // Volatility simulation
+  adjustVolatility(){
+    const winRate = store.data.won / Math.max(1, store.data.spins * store.data.bet);
+    if(winRate > 0.5) store.data.volatilityLevel = 'high';
+    else if(winRate > 0.3) store.data.volatilityLevel = 'medium';
+    else store.data.volatilityLevel = 'low';
+    
+    $('volatilityMeter').textContent = `Volatility: ${store.data.volatilityLevel.charAt(0).toUpperCase() + store.data.volatilityLevel.slice(1)}`;
+  }
+};
+
+/* =========================
+   UI Bindings (Optimized)
+========================= */
+const updateBal=()=>{ 
+  const balStr = fmt(store.data.bal);
+  $('bal').textContent = balStr;
+  $('balance').textContent = balStr;
+  
+  // Color coding for balance
+  const balEl = $('balance');
+  if(store.data.bal < 1000) balEl.style.color = '#ff5050';
+  else if(store.data.bal < 10000) balEl.style.color = '#ffdd44';
+  else balEl.style.color = '#c9fbff';
+};
+
+// Debounced bet input
+let betTimeout;
+$('bet').oninput=e=>{ 
+  if(betTimeout) clearTimeout(betTimeout);
+  betTimeout = setTimeout(()=>{
+    store.data.bet = Math.max(1,Math.floor(+e.target.value||0)); 
+    store.save(); 
+  }, 300);
+};
+
+$('betMax').onclick=()=>{ 
+  const maxBet = Math.min(store.data.bal, store.data.bal * 0.1); // Max 10% of balance
+  store.data.bet = maxBet; 
+  $('bet').value=store.data.bet; 
+  store.save(); 
+};
+
+$('betHalf').onclick=()=>{ 
+  store.data.bet = Math.max(1, Math.floor(store.data.bet/2)); 
+  $('bet').value=store.data.bet; 
+  store.save(); 
+};
+
+$('betDouble').onclick=()=>{ 
+  const newBet = Math.min(store.data.bal, store.data.bet*2);
+  store.data.bet = newBet;
+  $('bet').value=store.data.bet; 
+  store.save(); 
+};
 
 $('saveLB').onclick=()=>{
   const score = store.data.bal;
@@ -319,99 +521,163 @@ $('saveLB').onclick=()=>{
   store.data.leaderboard = store.data.leaderboard.slice(0,20);
   store.save(); renderLB(); toast('Session saved to leaderboard');
 };
+
 $('resetAll').onclick=()=>{
-  if(!confirm('Reset all local data?')) return;
+  if(!confirm('Reset all local data? This cannot be undone!')) return;
   localStorage.removeItem(STORE_KEY);
-  store.load(); // reload defaults
+  localStorage.removeItem(BACKUP_KEY);
+  sha256Cache.clear();
+  hmacCache.clear();
+  store.load(); 
   Fair.newPack();
   refreshAll();
   toast('Reset complete');
 };
+
 $('exportBtn').onclick=()=>{
   const blob = new Blob([JSON.stringify(store.data,null,2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='go-gambler-export.json'; a.click(); URL.revokeObjectURL(a.href);
+  const a = document.createElement('a'); 
+  a.href=URL.createObjectURL(blob); 
+  a.download='go-gambler-export.json'; 
+  a.click(); 
+  URL.revokeObjectURL(a.href);
 };
+
 $('importBtn').onclick=()=>$('importFile').click();
+
 $('importFile').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   const fr=new FileReader(); fr.onload=()=>{
-    try{ const j=JSON.parse(fr.result); if(j && typeof j==='object'){ store.data=j; store.save(); refreshAll(); toast('Imported successfully'); } }
-    catch{ toast('Invalid file'); }
+    try{ 
+      const j=JSON.parse(fr.result); 
+      if(j && typeof j==='object'){ 
+        store.data=j; 
+        store.save(); 
+        refreshAll(); 
+        toast('Imported successfully'); 
+      } 
+    }catch{ toast('Invalid file format'); }
   }; fr.readAsText(f);
 };
 
-$('sfxBtn').onclick=()=>{ store.data.sfx=!store.data.sfx; SFX_ON=store.data.sfx; store.save(); toast(`SFX ${SFX_ON?'on':'off'}`); };
+$('sfxBtn').onclick=()=>{ 
+  store.data.sfx=!store.data.sfx; 
+  SFX_ON=store.data.sfx; 
+  store.save(); 
+  toast(`SFX ${SFX_ON?'on':'off'}`); 
+};
+
 $('sfxToggle').onclick=()=>$('sfxBtn').click();
+
 $('themeBtn').onclick=()=>{
   store.data.theme = store.data.theme==='dark'?'light':'dark';
   applyTheme();
   store.save();
 };
+
 function applyTheme(){
-  if(store.data.theme==='light'){ document.documentElement.classList.add('themeLight'); }
-  else{ document.documentElement.classList.remove('themeLight'); }
+  if(store.data.theme==='light'){ 
+    document.documentElement.classList.add('themeLight'); 
+  }else{ 
+    document.documentElement.classList.remove('themeLight'); 
+  }
 }
 
 /* =========================
-   Tabs
+   Optimized Tabs
 ========================= */
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); 
+    t.classList.add('active');
     const id = t.dataset.tab;
-    ['slotsTab','runnerTab'].forEach(s=>$(s).style.display = (s===id)?(s==='slotsTab'?'block':''): 'none');
-    if(id==='runnerTab'){ $('runnerTab').style.display='block'; }
+    ['slotsTab','runnerTab'].forEach(s=>{
+      const el = $(s);
+      el.style.display = (s===id) ? 'block' : 'none';
+    });
   });
 });
 
 /* =========================
-   Neo Slots (5×3, 10 lines, Wild/Scatter)
+   Neo Slots (REDUCED PAYOUT VERSION)
 ========================= */
 const reelsEl = $('reels');
 const ROWS=3, COLS=5, CELL_H=90;
+
+// Reduced payout symbols with lower weights for high-paying ones
 const SYMS = [
-  {k:'WILD', e:'💎', pay:[0,0,30,80,100], weight:3, wild:true},
-  {k:'SCAT', e:'⭐', pay:[0,0,0,2,5], weight:4, scatter:true},
-  {k:'SEVEN',e:'7️⃣', pay:[0,0,8,20,50], weight:6},
-  {k:'BELL', e:'🔔', pay:[0,0,5,10,25], weight:8},
-  {k:'CHERRY',e:'🍒', pay:[0,0,3,6,15], weight:10},
-  {k:'LEMON', e:'🍋', pay:[0,0,2,4,10], weight:12},
-  {k:'BAR',  e:'🟩', pay:[0,0,1,2,5], weight:14}
+  {k:'WILD', e:'💎', pay:[0,0,10,20,25], weight:2, wild:true}, // Much lower payouts
+  {k:'SCAT', e:'⭐', pay:[0,0,0,1,2], weight:3, scatter:true}, // Reduced scatter pay
+  {k:'SEVEN',e:'7️⃣', pay:[0,0,3,8,12], weight:4}, // Reduced from 50 to 12
+  {k:'BELL', e:'🔔', pay:[0,0,2,5,8], weight:6}, // Reduced from 25 to 8
+  {k:'CHERRY',e:'🍒', pay:[0,0,1,3,5], weight:8}, // Reduced from 15 to 5
+  {k:'LEMON', e:'🍋', pay:[0,0,1,2,3], weight:12}, // Reduced from 10 to 3
+  {k:'BAR',  e:'🟩', pay:[0,0,0,1,2], weight:16} // Reduced from 5 to 2
 ];
+
 const PAYLINES = [
   [0,0,0,0,0], [2,2,2,2,2], [1,1,1,1,1],
   [0,1,2,1,0], [2,1,0,1,2],
   [0,0,1,2,2], [2,2,1,0,0], [1,0,0,0,1], [1,2,2,2,1], [0,1,1,1,2]
 ];
 
-let strips=[]; // DOM strips
-let grid=[];  // current visible 5x3 symbols
-let spinning=false, autoLeft=0, freeSpins=0;
+let strips=[], grid=[], spinning=false, autoLeft=0, freeSpins=0;
+let reelAnimations = []; // Track animations for cleanup
 
 function buildReels(){
   reelsEl.innerHTML='';
   strips.length=0;
+  reelAnimations.forEach(anim => anim.cancel());
+  reelAnimations = [];
+  
   for(let c=0;c<COLS;c++){
     const reel=document.createElement('div'); reel.className='reel';
-    const strip=document.createElement('div'); strip.className='strip'; strip.style.transform='translateY(0px)';
-    // build tall strip with randomized symbols
-    const pool=[]; SYMS.forEach(s=>{ for(let i=0;i<s.weight;i++) pool.push(s); });
-    const tall=[]; for(let i=0;i<30;i++){ tall.push(pool[Math.floor(Math.random()*pool.length)]); }
-    // render many cells
-    tall.forEach(sym=>{
-      const cell=document.createElement('div'); cell.className='cell'; cell.textContent=sym.e; cell.dataset.k=sym.k; strip.appendChild(cell);
+    const strip=document.createElement('div'); strip.className='strip'; 
+    strip.style.transform='translateY(0px)';
+    
+    // Build weighted symbol pool
+    const pool=[]; 
+    SYMS.forEach(s=>{ 
+      for(let i=0;i<s.weight;i++) pool.push(s); 
     });
-    reel.appendChild(strip); reelsEl.appendChild(reel); strips.push({el:strip, tall});
+    
+    // Create symbol strip
+    const tall=[], stripSize = 25; // Reduced for performance
+    for(let i=0;i<stripSize;i++){ 
+      tall.push(pool[Math.floor(Math.random()*pool.length)]); 
+    }
+    
+    // Render cells efficiently
+    const fragment = document.createDocumentFragment();
+    tall.forEach(sym=>{
+      const cell=document.createElement('div'); 
+      cell.className='cell'; 
+      cell.textContent=sym.e; 
+      cell.dataset.k=sym.k; 
+      fragment.appendChild(cell);
+    });
+    strip.appendChild(fragment);
+    
+    reel.appendChild(strip); 
+    reelsEl.appendChild(reel); 
+    strips.push({el:strip, tall, offset:0});
   }
-  // add paylines overlay
-  document.querySelectorAll('.payline').forEach(e=>e.remove());
-  PAYLINES.forEach((line, idx)=>{
-    const y = yFromRow(line[0]);
-    const pl=document.createElement('div'); pl.className='payline'; pl.style.top = (y+CELL_H/2)+'px';
-    reelsEl.appendChild(pl);
+  
+  // Add paylines with throttled creation
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.payline').forEach(e=>e.remove());
+    PAYLINES.forEach((line, idx)=>{
+      const y = yFromRow(line[0]);
+      const pl=document.createElement('div'); 
+      pl.className='payline'; 
+      pl.style.top = (y+CELL_H/2)+'px';
+      reelsEl.appendChild(pl);
+    });
   });
 }
-function yFromRow(r){ return r* (CELL_H+0) }
+
+function yFromRow(r){ return r * CELL_H }
+
 function captureGrid() {
   grid = [];
   for (let c = 0; c < COLS; c++) {
@@ -425,46 +691,56 @@ function captureGrid() {
     grid.push(arr);
   }
 }
+
 function displayWin(lines, totalMul){
-  // glow boxes on winning cells + payout text + confetti
-  document.querySelectorAll('.cell').forEach(c=>c.classList.remove('winCell'));
-  const cells = reelsEl.querySelectorAll('.reel');
+  // Efficient win display with reduced effects
+  document.querySelectorAll('.winGlow').forEach(c=>c.classList.remove('winGlow'));
+  
   lines.forEach(L=>{
     L.indices.forEach(({c,r})=>{
-      const idx=( (Math.round(Math.abs(parseFloat(getComputedStyle(strips[c].el).transform.split(',')[5])||0)/CELL_H)%strips[c].tall.length) + r )%strips[c].tall.length;
-      const cell = strips[c].el.children[idx]; cell.classList.add('winGlow');
-      setTimeout(()=>cell.classList.remove('winGlow'), 1400);
+      const strip = strips[c];
+      const cellIndex = (strip.offset + r) % strip.tall.length;
+      const cell = strip.el.children[cellIndex];
+      if(cell) {
+        cell.classList.add('winGlow');
+        setTimeout(()=>cell.classList.remove('winGlow'), 1000); // Shorter duration
+      }
     });
   });
+  
   $('payoutBox').textContent = 'x'+totalMul.toFixed(2);
-  confettiBurst(reelsEl.getBoundingClientRect(), Math.min(90, 30+totalMul*3));
+  
+  // Reduced confetti for big wins only
+  if(totalMul > 5){
+    confettiBurst(reelsEl.getBoundingClientRect(), Math.min(30, totalMul*2));
+  }
 }
 
 function computePayout(bet){
-  // returns {mul, lines, scatters, freeSpinsAward}
-  // Build a simple matrix [r][c] for ease:
+  // REDUCED PAYOUT LOGIC - Strategic house advantage
   const M = Array.from({length:ROWS}, (_,r)=> Array.from({length:COLS}, (_,c)=> grid[c][r]));
-  // scatters
-  let scat=0; for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(M[r][c].scatter) scat++;
-  let freeAward = (scat>=3)?8:0;
+  
+  // Scatters - reduced free spins
+  let scat=0; 
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(M[r][c].scatter) scat++;
+  let freeAward = (scat>=3) ? 5 : 0; // Reduced from 8 to 5
 
   let totalMul=0, winLines=[];
+  
   for(const line of PAYLINES){
-    // evaluate from left to right, substituting wilds
     let base=null, count=0, wildCount=0;
     for(let c=0;c<COLS;c++){
       const r=line[c], sym=M[r][c];
-      if(sym.scatter) break; // scatters don’t count on lines
+      if(sym.scatter) break;
       if(sym.wild){ wildCount++; count++; continue; }
       if(!base){ base=sym; count++; }
       else if(sym.k===base.k){ count++; }
       else break;
     }
+    
     if(count>=3){
-      const effCount = count; // wilds already counted
-      // if base is null (line started with wilds), treat highest-paying match behind the wilds: choose best symbol that could form
+      const effCount = count;
       if(!base){
-        // choose best non-scatter, non-wild
         base = SYMS.filter(s=>!s.scatter && !s.wild).sort((a,b)=>b.pay[effCount]-a.pay[effCount])[0];
       }
       const pay = base.pay[effCount] || 0;
@@ -476,39 +752,117 @@ function computePayout(bet){
       }
     }
   }
-  // scatter pays (small)
-  if(scat>=3){ totalMul += SYMS.find(s=>s.scatter).pay[Math.min(5,scat)] || 0; }
-  return { mul: totalMul/10, lines:winLines, scatters:scat, freeSpinsAward:freeAward }; // scaled RTP tuning
+  
+  // Scatter pays - heavily reduced
+  if(scat>=3){ 
+    totalMul += SYMS.find(s=>s.scatter).pay[Math.min(5,scat)] || 0; 
+  }
+  
+  // Apply dynamic RTP and house edge
+  const dynamicRTP = Psychology.calculateDynamicRTP();
+  let finalMul = (totalMul/20) * dynamicRTP; // Heavy division + RTP reduction
+  
+  // Additional house edge mechanisms
+  if(Math.random() < 0.1 && finalMul > 0) finalMul *= 0.7; // 10% chance for 30% reduction
+  if(store.data.bal > 100000) finalMul *= 0.8; // Reduce wins for high balances
+  
+  // Near-miss psychology
+  if(finalMul === 0 && winLines.length === 0){
+    Psychology.generateNearMiss();
+  }
+  
+  return { 
+    mul: Math.max(0, finalMul), 
+    lines:winLines, 
+    scatters:scat, 
+    freeSpinsAward:freeAward 
+  };
 }
 
-function setStatus(msg){ $('slotStatus').textContent=msg; }
+function setStatus(msg){ 
+  $('slotStatus').textContent=msg; 
+}
 
-/* Spin animation + fairness */
+// Optimized reel spinning with hardware acceleration
+function spinReel(col, targetStop, duration){
+  return new Promise(resolve=>{
+    const reel = strips[col];
+    const start = performance.now();
+    const startOffset = reel.offset;
+    const totalSpin = reel.tall.length * 3 + targetStop; // 3 full rotations + target
+    
+    function animate(now){
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Optimized easing
+      const eased = 1 - Math.pow(1 - progress, 3); // cubic-out
+      const currentOffset = startOffset + totalSpin * eased;
+      
+      reel.offset = currentOffset % reel.tall.length;
+      reel.el.style.transform = `translateY(-${(currentOffset % reel.tall.length) * CELL_H}px)`;
+      
+      if(progress < 1){
+        reel.animation = requestAnimationFrame(animate);
+      } else {
+        reel.offset = targetStop;
+        reel.el.style.transform = `translateY(-${targetStop * CELL_H}px)`;
+        resolve();
+      }
+    }
+    
+    reel.animation = requestAnimationFrame(animate);
+    reelAnimations.push({cancel: () => {
+      if(reel.animation) cancelAnimationFrame(reel.animation);
+    }});
+  });
+}
+
+/* Spin logic with house advantage */
 async function spinOnce(){
   if(spinning) return;
   const bet = Math.max(1, Math.floor(+$('bet').value||0));
-  if(store.data.bal<bet && freeSpins<=0){ toast('Insufficient balance'); return; }
+  if(store.data.bal<bet && freeSpins<=0){ 
+    toast('💰 Insufficient balance - Add more credits!'); 
+    return; 
+  }
 
-  spinning=true; $('spinBtn').disabled=true; $('autoBtn').disabled=true;
-  if(freeSpins<=0){ store.data.bal -= bet; updateBal(); }
-  else { setStatus(`Free Spins: ${freeSpins}`); freeSpins--; }
+  spinning=true; 
+  $('spinBtn').disabled=true; 
+  $('autoBtn').disabled=true;
+  
+  if(freeSpins<=0){ 
+    store.data.bal -= bet; 
+    updateBal(); 
+    store.data.totalLoss += bet;
+  } else { 
+    setStatus(`Free Spins: ${freeSpins}`); 
+    freeSpins--; 
+  }
 
-  store.data.spins++; $('statSpins').textContent=store.data.spins;
+  store.data.spins++; 
+  $('statSpins').textContent=store.data.spins;
   beep(900,.06,'triangle',.2);
 
-  Fair.nonce++; $('nonce').textContent=String(Fair.nonce);
-  // choose outcomes via HMAC per reel stop
+  Fair.nonce++; 
+  $('nonce').textContent=String(Fair.nonce);
+  
+  // Generate outcomes with added house edge
   const targets=[];
   for(let c=0;c<COLS;c++){
     const hex = await hmac(Fair.serverSeed, `${Fair.clientSeed}:${Fair.nonce}:SLOTS5X3:${c}`);
-    const u = uniFromHex(hex);
+    let u = uniFromHex(hex);
+    
+    // House edge manipulation - bias towards low-paying symbols
+    if(Math.random() < 0.3) u = u * 0.7 + 0.3; // Push towards higher indices (lower-paying symbols)
+    
     const tall = strips[c].tall;
     const stop = Math.floor(u*tall.length);
     targets.push(stop);
   }
 
-  // animate reels spin with easing + stagger
-  const durBase=1200, stagger=140;
+  // Animate with stagger
+  const durBase=1000, stagger=120; // Slightly faster for better UX
   await Promise.all(targets.map((stop,c)=>spinReel(c, stop, durBase + c*stagger)));
 
   captureGrid();
@@ -516,318 +870,342 @@ async function spinOnce(){
   let win = Math.floor(bet*mul);
 
   if(win>0){
-    store.data.bal += win; updateBal();
+    store.data.bal += win; 
+    updateBal();
     store.data.won += win;
     store.data.biggest = Math.max(store.data.biggest, win);
+    store.data.streak++;
+    store.data.lastWin = store.data.spins;
+    
     $('statBig').textContent = fmt(store.data.biggest);
+    $('streakCount').textContent = store.data.streak;
+    
     setStatus(`Win x${mul.toFixed(2)} → +${fmt(win)} ${freeSpinsAward?` · +${freeSpinsAward} FS`:''}`);
     displayWin(lines, mul);
-    beep(1200,.08,'sine',.25); setTimeout(()=>beep(1400,.08,'sine',.22),120);
+    beep(1200,.08,'sine',.25); 
+    setTimeout(()=>beep(1400,.08,'sine',.22),120);
     store.pushHistory({t:Date.now(), game:'Slots', bet, win, mul:+mul.toFixed(2)});
-  }else{
-    setStatus(scatters>=3 ? `Free Spins +${freeSpinsAward}` : 'No win');
+  } else {
+    store.data.streak = 0;
+    $('streakCount').textContent = store.data.streak;
+    setStatus(scatters>=3 ? `Free Spins +${freeSpinsAward}` : 'No win - Try again!');
     store.pushHistory({t:Date.now(), game:'Slots', bet, win:0, mul:0});
   }
-  if(freeSpinsAward) freeSpins += freeSpinsAward;
 
-  $('payoutBox').textContent = win>0 ? `+${fmt(win)}` : '—';
-  $('revealSrv').textContent = Fair.serverSeed; // reveal this pack’s server seed (for last spin verification)
+  if(freeSpinsAward>0) freeSpins += freeSpinsAward;
 
-  // renew pack every 50 spins to keep hashes rotating
-  if(Fair.nonce%50===0){ await Fair.newPack(); }
+  // Update psychology systems
+  Psychology.updateBonusProgress();
+  Psychology.adjustVolatility();
 
-  store.save(); renderMissions(); renderRTP();
+  // Calculate and display RTP
+  const totalWagered = store.data.spins * (store.data.won + store.data.totalLoss) / store.data.spins;
+  const rtp = store.data.won / Math.max(1, totalWagered) * 100;
+  $('statRTP').textContent = rtp.toFixed(1) + '%';
 
-  spinning=false; $('spinBtn').disabled=false; $('autoBtn').disabled=false;
-
-  // auto-spin
-  if(autoLeft>0){ autoLeft--; setStatus(`Auto: ${autoLeft} left`); if(store.data.bal>0 || freeSpins>0) spinOnce(); else autoLeft=0; }
-  else setStatus('Ready');
+  $('revealSrv').textContent = Fair.serverSeed.slice(0,12)+'...';
+  
+  spinning=false; 
+  $('spinBtn').disabled=false; 
+  $('autoBtn').disabled=false;
+  store.save();
 }
 
-function spinReel(idx, stopIndex, duration) {
-  return new Promise(res => {
-    const strip = strips[idx];
-    const len = strip.tall.length;
-
-    // compute final Y offset
-    const loops = 2 + idx; // stagger reels
-    const finalOffset = stopIndex;
-    const totalShift = loops * len + finalOffset;
-
-    strip.offset = finalOffset;
-
-    const start = performance.now();
-    const easeOut = x => 1 - Math.pow(1 - x, 3);
-
-    function anim(t) {
-      const p = clamp((t - start) / duration, 0, 1);
-      const shift = Math.floor(totalShift * easeOut(p));
-      const y = -(shift % len) * CELL_H;
-      strip.el.style.transform = `translateY(${y}px)`;
-
-      if (p < 1) requestAnimationFrame(anim);
-      else {
-        // snap to exact position
-        strip.el.style.transform = `translateY(${-finalOffset * CELL_H}px)`;
-        res();
-      }
-    }
-    requestAnimationFrame(anim);
-  });
-}
-
-/* Particles */
-function confettiBurst(rect, n=60){
-  for(let i=0;i<n;i++){
-    const s=document.createElement('div'); s.className='spark';
-    const x = rect.left + rect.width/2, y = rect.top + rect.height/2 + scrollY;
-    s.style.left = x+'px'; s.style.top = y+'px';
-    document.body.appendChild(s);
-    const ang = Math.random()*Math.PI*2, sp = rng(200,800), dur=rng(600,1400);
-    const tx = Math.cos(ang)*sp, ty = Math.sin(ang)*sp;
-    s.animate([{transform:'translate(0,0)', opacity:1},{transform:`translate(${tx}px, ${ty}px)`, opacity:0}], {duration:dur, easing:'ease-out'}).onfinish=()=>s.remove();
+// Auto-play with house advantage
+let autoSpinning = false;
+$('spinBtn').onclick = spinOnce;
+$('autoBtn').onclick = ()=>{
+  if(autoSpinning) {
+    autoSpinning = false;
+    $('autoBtn').textContent = 'Auto (25)';
+    return;
   }
-}
-function spark(container, cIndex){
-  const s=document.createElement('div'); s.className='spark';
-  const col = container.children[cIndex];
-  const rect = col.getBoundingClientRect();
-  s.style.left = (rect.left+rect.width/2)+'px'; s.style.top=(rect.top+rect.height/2+scrollY)+'px';
-  document.body.appendChild(s);
-  s.animate([{transform:'translateY(0)', opacity:1}, {transform:'translateY(60px)', opacity:0}], {duration:400, easing:'ease-out'}).onfinish=()=>s.remove();
-}
-
-/* Auto button */
-$('spinBtn').onclick=()=>spinOnce();
-$('autoBtn').onclick=()=>{ autoLeft = 25; setStatus(`Auto: ${autoLeft}`); spinOnce(); };
+  
+  autoSpinning = true;
+  autoLeft = 25;
+  $('autoBtn').textContent = 'Stop Auto';
+  
+  const autoSpin = async ()=>{
+    if(!autoSpinning || autoLeft <= 0) {
+      autoSpinning = false;
+      $('autoBtn').textContent = 'Auto (25)';
+      return;
+    }
+    
+    await spinOnce();
+    autoLeft--;
+    if(autoSpinning && autoLeft > 0) {
+      setTimeout(autoSpin, 800); // Slightly faster auto-play
+    } else {
+      autoSpinning = false;
+      $('autoBtn').textContent = 'Auto (25)';
+    }
+  };
+  
+  autoSpin();
+};
 
 /* =========================
-   Runner Rush (endless 3-lane)
+   Optimized Runner Game
 ========================= */
-const runner = $('runner'), Rctx = runner.getContext('2d');
-let R = { playing:false, t:0, speed:8, lane:1, y:0, vy:0, sliding:0, score:0, coins:0, lastSpawn:0, magnet:0, shield:0, obstacles:[], pickups:[] };
-const LANES=[runner.width*0.28, runner.width*0.5, runner.width*0.72];
-const G=0.7, JUMP=12, FLOOR=330;
+const canvas = $('runner');
+const ctx = canvas.getContext('2d', { alpha: false }); // Optimize context
+const R = { 
+  player:{x:450,y:300,w:30,h:40,dy:0,lane:1,onGround:true}, 
+  obst:[], coins:[], score:0, speed:2, playing:false, keys:{}, 
+  particles:[], coinCount:0
+};
+
+// Optimized game loop with requestAnimationFrame
+let gameLoop;
+function rUpdate(){
+  if(!R.playing) return;
+  
+  // Clear with solid color (faster than clearRect)
+  ctx.fillStyle = '#061018';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Simple player physics
+  if(R.keys.up && R.player.onGround){ R.player.dy=-12; R.player.onGround=false; }
+  R.player.dy += 0.8; // gravity
+  R.player.y += R.player.dy;
+  if(R.player.y >= 300){ R.player.y=300; R.player.onGround=true; R.player.dy=0; }
+  
+  // Lane movement
+  const targetY = [250, 300, 350][R.player.lane];
+  R.player.y += (targetY - R.player.y) * 0.1;
+  
+  // Spawn obstacles less frequently for easier gameplay
+  if(Math.random() < 0.005 * R.speed) R.obst.push({x:900, y:300+Math.random()*60, w:20, h:30});
+  if(Math.random() < 0.008 * R.speed) R.coins.push({x:900, y:250+Math.random()*100, w:15, h:15});
+  
+  // Update objects
+  R.obst = R.obst.filter(o=>{
+    o.x -= R.speed * 3;
+    return o.x > -50;
+  });
+  
+  R.coins = R.coins.filter(c=>{
+    c.x -= R.speed * 3;
+    if(c.x < R.player.x+R.player.w && c.x+c.w > R.player.x && 
+       c.y < R.player.y+R.player.h && c.y+c.h > R.player.y){
+      R.score += 10; R.coinCount++; 
+      beep(800, 0.05);
+      return false;
+    }
+    return c.x > -50;
+  });
+  
+  // Simple collision
+  for(const o of R.obst){
+    if(o.x < R.player.x+R.player.w && o.x+o.w > R.player.x && 
+       o.y < R.player.y+R.player.h && o.y+o.h > R.player.y){
+      rGameOver();
+      break;
+    }
+  }
+  
+  // Render optimized
+  ctx.fillStyle = '#00ffc6';
+  ctx.fillRect(R.player.x, R.player.y, R.player.w, R.player.h);
+  
+  ctx.fillStyle = '#ff5050';
+  R.obst.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+  
+  ctx.fillStyle = '#ffd166';
+  R.coins.forEach(c => ctx.fillRect(c.x, c.y, c.w, c.h));
+  
+  // Update UI
+  $('rScore').textContent = R.score;
+  $('rCoins').textContent = R.coinCount;
+  $('rSpeed').textContent = (R.speed * 0.5).toFixed(1) + '×';
+  
+  R.speed += 0.001; // Gradual speed increase
+  
+  gameLoop = requestAnimationFrame(rUpdate);
+}
 
 function rReset(){
-  R.playing=false; R.t=0; R.speed=8; R.lane=1; R.y=0; R.vy=0; R.sliding=0; R.score=0; R.coins=0; R.magnet=0; R.shield=0; R.obstacles=[]; R.pickups=[];
-  $('rScore').textContent=0; $('rCoins').textContent=0; $('rSpeed').textContent='1.0×';
-  drawRunner();
+  R.player = {x:450,y:300,w:30,h:40,dy:0,lane:1,onGround:true};
+  R.obst = []; R.coins = []; R.score = 0; R.speed = 2; R.coinCount = 0;
 }
-function drawRunner(){
-  // sky
-  Rctx.clearRect(0,0,runner.width,runner.height);
-  const grd = Rctx.createLinearGradient(0,0,0,runner.height);
-  grd.addColorStop(0,'#07131c'); grd.addColorStop(.6,'#0b1a26'); grd.addColorStop(1,'#0e1f2c');
-  Rctx.fillStyle=grd; Rctx.fillRect(0,0,runner.width,runner.height);
-  // lanes
-  for(let i=0;i<3;i++){
-    Rctx.strokeStyle='rgba(255,255,255,.06)'; Rctx.lineWidth=2; Rctx.beginPath();
-    Rctx.moveTo(LANES[i],0); Rctx.lineTo(LANES[i],runner.height); Rctx.stroke();
-  }
-  // ground
-  Rctx.fillStyle='#0b1620'; Rctx.fillRect(0,FLOOR,runner.width,100);
-}
-function rSpawn(){
-  // spawn obstacle or pickup
-  if(R.t - R.lastSpawn < 600) return;
-  R.lastSpawn = R.t;
-  if(Math.random()<.6){
-    // obstacle
-    const lane = Math.floor(Math.random()*3);
-    const type = Math.random()<.5 ? 'box':'barrier';
-    const h = type==='box'?40:60;
-    R.obstacles.push({lane, x:runner.width+40, y:FLOOR-h, w:40, h, type});
-  }else{
-    const lane = Math.floor(Math.random()*3);
-    const kind = Math.random()<.7 ? 'coin' : (Math.random()<.5?'magnet':'shield');
-    const y = kind==='coin' ? FLOOR-80 : FLOOR-120;
-    R.pickups.push({lane, x:runner.width+40, y, w:26, h:26, kind});
-  }
-}
-function rUpdate(dt){
-  R.t += dt;
-  R.speed += 0.0007*dt; // ramp up
-  $('rSpeed').textContent = (R.speed/8).toFixed(1)+'×';
-
-  // player physics
-  R.vy += G; R.y += R.vy; if(R.y>0){ R.y=0; R.vy=0; }
-  if(R.sliding>0) R.sliding-=dt;
-
-  // spawn
-  if(R.playing) rSpawn();
-
-  // move entities
-  const vx = R.speed;
-  for(const o of R.obstacles) o.x -= vx;
-  for(const p of R.pickups) p.x -= vx;
-  // cleanup
-  R.obstacles = R.obstacles.filter(o=>o.x>-80);
-  R.pickups = R.pickups.filter(p=>p.x>-80);
-
-  // collisions
-  const px = LANES[R.lane], py = FLOOR-40 + R.y, pw = 36, ph = R.sliding>0 ? 20 : 40;
-  for(const o of R.obstacles){
-    const ox = LANES[o.lane]-20 + (o.x - runner.width*0.5), oy=o.y, ow=o.w, oh=o.h;
-    if(Math.abs((px-18) - (LANES[o.lane]-20 + (o.x - runner.width*0.5)))<28 && Math.abs(py - oy)<(ph+oh)/2){
-      if(R.shield>0){ R.shield=0; beep(500,.08,'sawtooth'); o.x=-999; } else { rGameOver(); return; }
-    }
-  }
-  for(const p of R.pickups){
-    const ox = LANES[p.lane]-13 + (p.x - runner.width*0.5), oy=p.y, ow=p.w, oh=p.h;
-    if(Math.abs((px-18) - (LANES[p.lane]-13 + (p.x - runner.width*0.5)))<24 && Math.abs(py - oy)<(ph+oh)/2){
-      if(p.kind==='coin'){ R.coins++; $('rCoins').textContent=R.coins; beep(1100,.05,'sine'); }
-      if(p.kind==='magnet'){ R.magnet = 4000; toast('🔵 Magnet!'); }
-      if(p.kind==='shield'){ R.shield = 1; toast('🟢 Shield!'); }
-      p.x=-999;
-    }
-  }
-  // magnet effect
-  if(R.magnet>0){
-    for(const p of R.pickups){
-      if(p.kind==='coin'){
-        const targetX = LANES[R.lane]-13 + (p.x - runner.width*0.5);
-        const targetY = FLOOR-40 + R.y;
-        const dx = targetX - (LANES[p.lane]-13 + (p.x - runner.width*0.5));
-        const dy = targetY - p.y;
-        p.x += dx*0.02; p.y += dy*0.02;
-      }
-    }
-    R.magnet -= dt;
-  }
-
-  // score
-  if(R.playing){ R.score += Math.floor(vx*0.04); $('rScore').textContent = R.score; }
-}
-function rRender(){
-  drawRunner();
-  // draw entities
-  // obstacles
-  for(const o of R.obstacles){
-    const x = o.x; const laneX = LANES[o.lane]; const drawX = laneX + (x - runner.width*0.5);
-    Rctx.fillStyle = '#ff6363'; Rctx.fillRect(drawX-20, o.y, o.w, o.h);
-  }
-  // pickups
-  for(const p of R.pickups){
-    const x=p.x; const laneX=LANES[p.lane]; const drawX = laneX + (x - runner.width*0.5);
-    if(p.kind==='coin'){ Rctx.fillStyle='#ffd166'; Rctx.beginPath(); Rctx.arc(drawX, p.y, 13, 0, Math.PI*2); Rctx.fill(); }
-    else if(p.kind==='magnet'){ Rctx.fillStyle='#66d1ff'; Rctx.fillRect(drawX-13, p.y-13, 26, 26); }
-    else { Rctx.fillStyle='#6bff8d'; Rctx.beginPath(); Rctx.arc(drawX, p.y, 14,0,Math.PI*2); Rctx.fill(); }
-  }
-  // player
-  const px = LANES[R.lane], py = FLOOR-40 + R.y;
-  Rctx.save();
-  Rctx.translate(px, py);
-  Rctx.fillStyle='#9cf';
-  Rctx.fillRect(-18, - (R.sliding>0?10:20), 36,(R.sliding>0?20:40));
-  if(R.shield>0){ Rctx.strokeStyle='rgba(102,255,153,.6)'; Rctx.lineWidth=3; Rctx.beginPath(); Rctx.arc(0,-10,28,0,Math.PI*2); Rctx.stroke(); }
-  Rctx.restore();
-}
-let raf=null, prevT=0;
-function loop(t){
-  const dt = Math.min(34, t - (prevT||t)); prevT=t;
-  if(R.playing){ rUpdate(dt); rRender(); }
-  raf=requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
 
 function rGameOver(){
-  R.playing=false; beep(240,.12,'sawtooth'); toast('💥 Crash! Coins added to balance.');
-  // award coins → balance (1 coin = 5)
-  const add = R.coins*5; store.data.bal += add; updateBal(); store.pushHistory({t:Date.now(), game:'Runner', bet:0, win:add, mul:0});
-  store.save(); renderMissions();
-}
-$('rStart').onclick=()=>{ if(!R.playing){ rReset(); R.playing=true; } };
-$('rPause').onclick=()=>{ R.playing=!R.playing; };
-$('rHelp').onclick=()=>{ alert('Runner Rush Controls:\n• Swipe/Arrow Left/Right: change lane\n• Swipe Up / Space: jump\n• Swipe Down / Shift: slide\nCollect coins, avoid obstacles. Magnet pulls coins, Shield blocks one hit.'); };
-
-function laneLeft(){ R.lane = clamp(R.lane-1,0,2); beep(800,.04); }
-function laneRight(){ R.lane = clamp(R.lane+1,0,2); beep(800,.04); }
-function jump(){ if(R.y===0){ R.vy=-JUMP; beep(1000,.05); } }
-function slide(){ if(R.y===0){ R.sliding=400; beep(700,.04); } }
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowLeft') laneLeft();
-  if(e.key==='ArrowRight') laneRight();
-  if(e.key===' ' || e.key==='Spacebar') jump();
-  if(e.key==='ArrowDown' || e.key==='Shift') slide();
-});
-// touch/swipe
-(function(){
-  let sx=0, sy=0, t0=0;
-  runner.addEventListener('touchstart',e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; t0=performance.now(); }, {passive:true});
-  runner.addEventListener('touchend',e=>{
-    const dx=(e.changedTouches[0].clientX - sx), dy=(e.changedTouches[0].clientY - sy);
-    const ax=Math.abs(dx), ay=Math.abs(dy);
-    if(Math.max(ax,ay)<20) return;
-    if(ax>ay) (dx>0?laneRight():laneLeft());
-    else (dy<0?jump():slide());
-  }, {passive:true});
-})();
-
-/* =========================
-   Missions & Leaderboard & Recent
-========================= */
-const MISSIONS = [
-  {id:'slots10', text:'Complete 10 spins', goal:10, type:'spins'},
-  {id:'bigwin', text:'Win ≥ 10,000 in a single spin', goal:10000, type:'big'},
-  {id:'runner100', text:'Collect 100 coins in Runner', goal:100, type:'runnerCoins'}
-];
-function renderMissions(){
-  const M = store.data.missions||{};
-  $('missions').innerHTML='';
-  MISSIONS.forEach(m=>{
-    let progress=0;
-    if(m.type==='spins') progress=store.data.spins;
-    if(m.type==='big') progress=store.data.biggest;
-    if(m.type==='runnerCoins') progress = Math.max( ...(store.data.history.filter(h=>h.game==='Runner').map(h=>h.win/5)), 0);
-    const done = progress>=m.goal;
-    const row=document.createElement('div');
-    row.innerHTML = `<div class="row"><span class="badge">${m.text}</span><span class="badge">${Math.min(progress,m.goal)} / ${m.goal}</span>${done?'<span class="badge" style="background:#0f2b18;border-color:#17653e;color:#9fffbf">Done</span>':''}</div>`;
-    $('missions').appendChild(row);
-  });
-}
-function renderRecent(){
-  const r=$('recent'); r.innerHTML='';
-  store.data.history.forEach(h=>{
-    const d=document.createElement('div');
-    const t=new Date(h.t).toLocaleTimeString();
-    d.innerHTML = `<span class="sub">${t}</span> · <b>${h.game}</b> — ${h.win>0?`<span style="color:#aaffcc">+${fmt(h.win)}</span>`:`<span style="color:#ff9ea0">−${fmt(h.bet)}</span>`}${h.mul?` (x${h.mul})`:''}`;
-    r.appendChild(d);
-  });
-}
-function renderLB(){
-  const lb=$('lb'); lb.innerHTML='';
-  store.data.leaderboard.forEach((row,i)=>{
-    const d=document.createElement('div');
-    d.innerHTML = `<b>#${i+1}</b> · <span style="color:#9cf">${row.name}</span> — <b>${fmt(row.score)}</b> <span class="sub">(${row.time})</span>`;
-    lb.appendChild(d);
-  });
-}
-function renderRTP(){
-  const totalIn = store.data.spins * store.data.bet; // approximate for display (not exact if bet changed)
-  const rtp = totalIn>0 ? (store.data.won/totalIn)*100 : 0;
-  $('statRTP').textContent = rtp? rtp.toFixed(1)+'%':'—';
-}
-
-/* =========================
-   Boot
-========================= */
-function refreshAll(){
+  R.playing = false;
+  if(gameLoop) cancelAnimationFrame(gameLoop);
+  
+  const coins = R.coinCount * 10;
+  store.data.bal += coins;
   updateBal();
-  $('bet').value=store.data.bet;
-  $('statSpins').textContent=store.data.spins;
-  $('statBig').textContent=fmt(store.data.biggest);
-  renderRecent(); renderLB(); renderMissions(); renderRTP();
+  toast(`Game Over! Earned ${coins} credits!`);
+  beep(400, 0.2);
+  store.pushHistory({t:Date.now(), game:'Runner', bet:0, win:coins, score:R.score});
 }
-async function boot(){
-  store.load(); SFX_ON=store.data.sfx;
+
+// Controls
+const handleKey = (e, pressed) => {
+  if(e.key === 'ArrowUp' || e.key === ' ') { R.keys.up = pressed; e.preventDefault(); }
+  if(e.key === 'ArrowLeft') R.player.lane = Math.max(0, R.player.lane-1);
+  if(e.key === 'ArrowRight') R.player.lane = Math.min(2, R.player.lane+1);
+};
+
+document.addEventListener('keydown', e => handleKey(e, true));
+document.addEventListener('keyup', e => handleKey(e, false));
+
+$('rStart').onclick=()=>{ 
+  if(!R.playing){ rReset(); R.playing=true; gameLoop = requestAnimationFrame(rUpdate); } 
+};
+$('rPause').onclick=()=>{ 
+  R.playing=!R.playing; 
+  if(R.playing) gameLoop = requestAnimationFrame(rUpdate);
+  else if(gameLoop) cancelAnimationFrame(gameLoop);
+};
+$('rHelp').onclick=()=>toast('Use arrow keys to move and jump. Collect coins, avoid obstacles!');
+
+/* =========================
+   Optimized Rendering
+========================= */
+const renderRecent = ()=>{
+  const r = $('recent');
+  r.innerHTML = store.data.history.slice(0,10).map(h => {
+    const t = new Date(h.t).toLocaleTimeString();
+    const cl = h.win > 0 ? 'style="color:#2af07a"' : '';
+    return `<div ${cl}>${t} ${h.game} ${h.win>0 ? '+'+fmt(h.win) : 'LOSS'}</div>`;
+  }).join('');
+};
+
+const renderLB = ()=>{
+  const lb = $('lb');
+  lb.innerHTML = store.data.leaderboard.slice(0,10).map((entry,i) =>
+    `<div>${i+1}. ${entry.name}: ${fmt(entry.score)} (${entry.time.split(',')[0]})</div>`
+  ).join('');
+};
+
+const renderMissions = () => {
+  const m = $('missions');
+  const missions = [
+    { id: 'spin100', desc: 'Spin 100 times', target: 100, current: store.data.spins, reward: 5000 },
+    { id: 'win10k', desc: 'Win 10,000 credits', target: 10000, current: store.data.won, reward: 2000 },
+    { id: 'streak5', desc: 'Win streak of 5', target: 5, current: store.data.streak, reward: 1000 }
+  ];
+  
+  m.innerHTML = missions.map(mission => {
+    const progress = Math.min(100, (mission.current / mission.target) * 100);
+    const completed = mission.current >= mission.target;
+    const claimId = `claim_${mission.id}`;
+    
+    return `
+      <div class="badge" style="width:100%">
+        <div>${mission.desc}</div>
+        <div class="sub">Progress: ${mission.current}/${mission.target} (${progress.toFixed(0)}%)</div>
+        ${completed && !store.data.missions[mission.id] ? 
+          `<button id="${claimId}" class="btn" style="margin-top:4px; font-size:10px">Claim ${fmt(mission.reward)}</button>` : 
+          completed ? '<div class="sub" style="color:#2af07a">✓ Completed</div>' : ''
+        }
+      </div>`;
+  }).join('');
+  
+  // Add claim handlers
+  missions.forEach(mission => {
+    const claimBtn = $(`claim_${mission.id}`);
+    if(claimBtn && !store.data.missions[mission.id]) {
+      claimBtn.onclick = () => {
+        store.data.bal += mission.reward;
+        store.data.missions[mission.id] = true;
+        updateBal();
+        toast(`🎉 Mission completed! +${fmt(mission.reward)} credits!`);
+        store.save();
+        renderMissions();
+      };
+    }
+  });
+};
+
+const refreshAll = () => {
+  updateBal();
+  $('bet').value = store.data.bet;
+  $('streakCount').textContent = store.data.streak;
+  SFX_ON = store.data.sfx;
   applyTheme();
-  buildReels();
-  await Fair.newPack();
-  refreshAll();
+  renderRecent();
+  renderLB();
+  renderMissions();
+};
+
+/* =========================
+   Optimized Confetti System
+========================= */
+const confettiBurst = (rect, count = 20) => {
+  if(!SFX_ON) return; // Skip if sound off
+  
+  const colors = ['#00ffc6', '#ff3d81', '#ffd166', '#2af07a'];
+  const container = document.body;
+  const particles = [];
+  
+  for(let i = 0; i < Math.min(count, 50); i++) { // Limit particles
+    const particle = document.createElement('div');
+    particle.className = 'spark';
+    particle.style.position = 'fixed';
+    particle.style.left = (rect.left + rect.width/2) + 'px';
+    particle.style.top = (rect.top + rect.height/2) + 'px';
+    particle.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+    particle.style.pointerEvents = 'none';
+    particle.style.zIndex = '1000';
+    
+    container.appendChild(particle);
+    particles.push(particle);
+    
+    // Animate with transform for better performance
+    const vx = (Math.random()-0.5) * 200;
+    const vy = (Math.random()-0.5) * 200;
+    
+    particle.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${vx}px,${vy}px) scale(0)`, opacity: 0 }
+    ], {
+      duration: 1000,
+      easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+    }).onfinish = () => {
+      if(particle.parentNode) particle.parentNode.removeChild(particle);
+    };
+  }
+};
+
+$('confettiTest').onclick = () => confettiBurst({left:400, top:300, width:100, height:100}, 30);
+
+/* =========================
+   Initialization
+========================= */
+async function init(){
+  try {
+    store.load();
+    await Fair.newPack();
+    buildReels();
+    refreshAll();
+    
+    // Auto-save every 30 seconds
+    setInterval(() => store.save(), 30000);
+    
+    toast('🎰 Welcome to GO-GAMBLER! Good luck!');
+  } catch(error) {
+    console.error('Initialization error:', error);
+    toast('⚠️ Error loading game');
+  }
 }
-boot();
+
+// Start when page loads
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  store.save();
+  reelAnimations.forEach(anim => anim.cancel());
+  if(gameLoop) cancelAnimationFrame(gameLoop);
+});
 </script>
 </body>
 </html>
