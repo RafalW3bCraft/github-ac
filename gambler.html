@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>GO-GAMBLER — RafalW3bCraft</title>
+<style>
+  :root{
+    --bg:#0a0f14; --panel:#0e1822; --ink:#cfe8ff; --muted:#7aa2c3;
+    --acc:#00ffc6; --acc2:#ff3d81; --good:#26e07f; --bad:#ff5757; --warn:#ffd166;
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  body{margin:0;background:radial-gradient(1100px 600px at 120% -10%,rgba(0,255,198,.12),transparent),
+                 radial-gradient(900px 500px at -10% 110%,rgba(255,61,129,.10),transparent),#061018;color:var(--ink)}
+  header{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #122737;background:#07121b90;backdrop-filter:blur(6px)}
+  h1{font-size:16px;margin:0;color:var(--acc);letter-spacing:.5px}
+  .brand{display:flex;align-items:center;gap:8px}
+  .tag{font-size:12px;color:#9adbe2}
+  .wrap{padding:12px;display:grid;gap:12px;grid-template-columns:1fr}
+  @media(min-width:1000px){.wrap{grid-template-columns:280px 1fr 320px}}
+  .card{background:linear-gradient(180deg,#0a131c,#0c1a25);border:1px solid #183445;border-radius:12px;overflow:hidden}
+  .card h2{margin:0;padding:10px 12px;border-bottom:1px dashed #1a3a4d;color:#8ee6ff;font-size:13px;letter-spacing:.6px}
+  .pad{padding:10px 12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .col{display:flex;flex-direction:column;gap:8px}
+  button{cursor:pointer;border:1px solid #23475a;background:#0f1e2a;color:var(--ink);padding:10px 12px;border-radius:10px}
+  button.primary{background:linear-gradient(180deg,#00ffc6,#00d3a7);border-color:#00e4bc;color:#00221c;font-weight:700}
+  button.warn{background:#2b1f0b;border-color:#634e1a;color:#ffecc0}
+  button.ghost{background:transparent}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  input,select{background:#0f1b26;border:1px solid #1b3a4c;border-radius:10px;color:#d8f6ff;padding:8px 10px;min-width:0}
+  .kpi{background:#08131c;border:1px solid #1b3748;border-radius:10px;padding:10px}
+  .pill{padding:6px 10px;border:1px solid #244b5e;border-radius:999px;background:#0c1620;color:#a8d7ff}
+  .score{font-size:22px;color:#c6f7ff}
+  .muted{color:var(--muted)}
+  .grid{display:grid;gap:10px}
+  .grid2{grid-template-columns:1fr 1fr}
+  .grid3{grid-template-columns:repeat(3,1fr)}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:10px;background:#0c1822;border:1px solid #183b4f}
+  .tab.active{background:linear-gradient(180deg,#12293a,#0d1f2b);box-shadow:0 0 0 1px #1f5067 inset}
+  .area{min-height:340px}
+  .slot-machine{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0}
+  .reel{aspect-ratio:1/1.1;background:#06111a;border:1px solid #224355;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:38px;position:relative;overflow:hidden}
+  .reel>div{position:absolute;will-change:transform}
+  .pay{font-size:12px}
+  .table{width:100%;border-collapse:collapse}
+  .table th,.table td{border-bottom:1px dashed #1c3850;padding:6px 4px;text-align:left;font-size:12px}
+  .hl{color:#9cf}
+  .dealer,.player{display:flex;gap:6px;flex-wrap:wrap}
+  .cardv{width:42px;height:60px;border-radius:6px;border:1px solid #264a5a;background:#0b1620;display:grid;place-items:center;font-weight:700}
+  .green{color:var(--good)} .red{color:var(--bad)} .amber{color:var(--warn)}
+  .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#07131b;color:#d8fffb;border:1px solid #1b3646;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .18s, transform .18s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+  .fair{font-size:11px;word-break:break-all;color:#90cfe0}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span style="font-size:20px">🎰</span><h1>GO-GAMBLER</h1></div>
+  <div class="tag">by <b>RafalW3bCraft</b> · web/mobile demo</div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: Wallet + Fairness -->
+  <section class="card">
+    <h2>Wallet & Session</h2>
+    <div class="pad col">
+      <div class="kpi">
+        <div class="muted">Balance</div>
+        <div id="bal" class="score">10000</div>
+      </div>
+      <div class="row">
+        <label class="muted">Bet</label>
+        <input id="bet" type="number" min="1" step="10" value="100" style="width:120px"/>
+        <button id="max" class="pill">MAX</button>
+        <button id="add" class="pill">+1k</button>
+        <button id="reset" class="pill">Reset 10k</button>
+      </div>
+      <div class="kpi">
+        <div class="muted">Provably Fair (HMAC-SHA256)</div>
+        <div class="fair">Server Seed Hash: <span id="srvHash">—</span></div>
+        <div class="fair">Client Seed: <span id="cliSeed">—</span></div>
+        <div class="fair">Nonce: <span id="nonce">—</span></div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Responsible Play</div>
+        <div class="fair">Demo credits only. Set your limits; take breaks. 18+.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CENTER: Games -->
+  <section class="card">
+    <h2>Games</h2>
+    <div class="pad">
+      <div class="tabs">
+        <button class="tab active" data-tab="slots">🎲 Slots</button>
+        <button class="tab" data-tab="blackjack">🂡 Blackjack</button>
+        <button class="tab" data-tab="dice">🎯 Dice (Roll-Under)</button>
+      </div>
+
+      <!-- SLOTS -->
+      <div class="area" id="slots">
+        <div class="row" style="margin-top:8px">
+          <button id="spin" class="primary">SPIN</button>
+          <span id="slotsStatus" class="pill">Ready</span>
+        </div>
+        <div class="slot-machine">
+          <div class="reel"><div id="r0">🍒</div></div>
+          <div class="reel"><div id="r1">🍋</div></div>
+          <div class="reel"><div id="r2">💎</div></div>
+        </div>
+        <div class="grid grid2">
+          <div class="kpi">
+            <div class="muted">Paylines</div>
+            <div class="pay">Middle row only (prototype)</div>
+          </div>
+          <div class="kpi">
+            <div class="muted">Payouts</div>
+            <table class="table">
+              <tr><th>3× 💎</th><td class="green">x20</td></tr>
+              <tr><th>3× ⭐</th><td class="green">x10</td></tr>
+              <tr><th>3× 🍒</th><td class="green">x5</td></tr>
+              <tr><th>Any 2 match</th><td class="green">x2</td></tr>
+              <tr><th>No match</th><td class="red">Lose bet</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLACKJACK -->
+      <div class="area" id="blackjack" style="display:none">
+        <div class="grid grid2">
+          <div class="kpi">
+            <div class="muted">Dealer</div>
+            <div id="dealer" class="dealer"></div>
+            <div id="dealerVal" class="muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="muted">You</div>
+            <div id="player" class="player"></div>
+            <div id="playerVal" class="muted">—</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="bjDeal" class="primary">Deal</button>
+          <button id="bjHit">Hit</button>
+          <button id="bjStand">Stand</button>
+          <button id="bjDouble" class="warn">Double</button>
+          <span id="bjStatus" class="pill">Ready</span>
+        </div>
+        <div class="kpi" style="margin-top:8px">
+          <div class="muted">Rules</div>
+          <div class="fair">Blackjack pays 3:2 · Dealer stands on 17 · No splits (prototype)</div>
+        </div>
+      </div>
+
+      <!-- DICE -->
+      <div class="area" id="dice" style="display:none">
+        <div class="grid grid3">
+          <div class="kpi">
+            <div class="muted">Target (roll &lt; X)</div>
+            <input id="diceTarget" type="number" min="2" max="98" value="50" style="width:100%"/>
+          </div>
+          <div class="kpi">
+            <div class="muted">Payout</div>
+            <div id="dicePayout" class="score">1.96×</div>
+          </div>
+          <div class="kpi">
+            <div class="muted">Result</div>
+            <div id="diceResult" class="score">—</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="diceRoll" class="primary">Roll</button>
+          <span id="diceStatus" class="pill">Ready</span>
+        </div>
+        <div class="kpi" style="margin-top:8px">
+          <div class="muted">Mechanics</div>
+          <div class="fair">Server+client seeds → 0–99.99. House edge 1% (prototype). Payout = 0.99×(100/(X-0.01)).</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Activity -->
+  <section class="card">
+    <h2>Activity & Limits</h2>
+    <div class="pad col">
+      <div class="kpi">
+        <div class="muted">Last Results</div>
+        <div id="log" style="max-height:240px;overflow:auto;font-size:12px"></div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Session Limits</div>
+        <div class="row">
+          <label class="muted">Max spins/rounds</label>
+          <input id="limitPlays" type="number" min="10" value="200" style="width:100px">
+          <button id="applyLimit" class="pill">Apply</button>
+        </div>
+        <div class="fair">You’ve used <span id="playsUsed">0</span>/<span id="playsMax">200</span> plays.</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Fairness Reveal (last round)</div>
+        <div class="fair">Server Seed: <span id="revealSrv">—</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast">Toast</div>
+
+<script>
+/* ========= Utils / Fairness ========= */
+const $ = id=>document.getElementById(id);
+const toast=(m)=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1400);};
+const fmt=n=>Number(n).toLocaleString();
+const sha256=async s=>{
+  const buf=new TextEncoder().encode(s);
+  const h=await crypto.subtle.digest('SHA-256',buf);
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
+};
+const hmac=async (key,msg)=>{
+  const enc=new TextEncoder();
+  const cryptoKey=await crypto.subtle.importKey('raw',enc.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sig=await crypto.subtle.sign('HMAC',cryptoKey,enc.encode(msg));
+  return [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
+};
+function rngFromHex(hex){ // hex -> [0,1)
+  const slice=hex.slice(0,13);
+  return parseInt(slice,16)/Math.pow(16,13);
+}
+const sound=(f=880,d=0.06,type='sine')=>{
+  const AC=new (window.AudioContext||window.webkitAudioContext)();
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type;o.frequency.value=f;o.connect(g);g.connect(AC.destination);
+  g.gain.value=.001; g.gain.exponentialRampToValueAtTime(.18,AC.currentTime+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d); o.start(); o.stop(AC.currentTime+d+.02);
+};
+
+/* ========= State ========= */
+const state={
+  bal: 10000,
+  bet: 100,
+  plays: 0, playsMax: 200,
+  serverSeed: '', serverHash: '', clientSeed: '', nonce: 0,
+  lastServerReveal: '—'
+};
+async function newSeeds(){
+  state.clientSeed = Math.random().toString(36).slice(2);
+  state.serverSeed = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  state.serverHash = await sha256(state.serverSeed);
+  state.nonce = 0;
+  $('srvHash').textContent = state.serverHash;
+  $('cliSeed').textContent = state.clientSeed;
+  $('nonce').textContent = String(state.nonce);
+}
+function spend(b){
+  if(b>state.bal){toast('Insufficient balance');return false;}
+  state.bal -= b; $('bal').textContent = fmt(state.bal); return true;
+}
+function pay(x){
+  state.bal += x; $('bal').textContent = fmt(state.bal);
+}
+function logLine(text){
+  const n=document.createElement('div'); n.textContent=text; $('log').prepend(n);
+}
+function incPlay(){
+  state.plays++; $('playsUsed').textContent=state.plays;
+  if(state.plays>=state.playsMax){ toast('Play limit reached'); return false; }
+  return true;
+}
+
+/* ========= Tabs ========= */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const id=t.dataset.tab;
+    ['slots','blackjack','dice'].forEach(s=>$(s).style.display = (s===id)?'block':'none');
+  });
+});
+
+/* ========= Wallet Controls ========= */
+$('add').onclick=()=>{state.bal+=1000;$('bal').textContent=fmt(state.bal);};
+$('reset').onclick=()=>{state.bal=10000;state.plays=0;$('bal').textContent=fmt(state.bal);$('playsUsed').textContent=0;toast('Balance & counters reset');};
+$('max').onclick=()=>{$('bet').value=state.bal;};
+$('bet').oninput=e=>{state.bet=Math.max(1,Math.floor(+e.target.value||0));};
+
+/* ========= Fairness UI ========= */
+$('applyLimit').onclick=()=>{const v=Math.max(10, +$('limitPlays').value||200); state.playsMax=v; $('playsMax').textContent=v; toast('Limit updated');};
+
+/* ========= SLOTS ========= */
+const symbols = [ // symbol, weight, emoji
+  {k:'GEM', w:3, e:'💎', mul:20},
+  {k:'STAR',w:6, e:'⭐', mul:10},
+  {k:'CHERRY',w:10,e:'🍒', mul:5},
+  {k:'BAR', w:14, e:'🟥', mul:2}, // helps create 2-of-a-kind
+  {k:'LEMON',w:14,e:'🍋', mul:0}
+];
+function pickSymbol(u){
+  const total=symbols.reduce((a,s)=>a+s.w,0);
+  let x=u*total;
+  for(const s of symbols){ if((x-=s.w)<=0) return s; }
+  return symbols[symbols.length-1];
+}
+function slotsPayout(arr){
+  const [a,b,c]=arr.map(x=>x.k);
+  if(a===b && b===c){
+    const mul=symbols.find(s=>s.k===a).mul||0;
+    return mul>0?mul:0;
+  }
+  if(a===b || b===c || a===c) return 2;
+  return 0;
+}
+function setReel(i, emoji){ $('r'+i).textContent=emoji; $('r'+i).style.transform='translateY(0)'; }
+
+$('spin').onclick=async ()=>{
+  if(!incPlay()) return;
+  const bet = Math.max(1, +$('bet').value||0);
+  if(!spend(bet)) return;
+  sound(920,.06,'triangle');
+  $('slotsStatus').textContent='Spinning…';
+  state.nonce++;
+  $('nonce').textContent=String(state.nonce);
+  const rolls=[];
+  for(let i=0;i<3;i++){
+    const hex = await hmac(state.serverSeed, `${state.clientSeed}:${state.nonce}:SLOTS:${i}`);
+    const u = rngFromHex(hex);
+    const sym = pickSymbol(u);
+    rolls.push(sym);
+  }
+  // simple spin animation
+  for(let t=0;t<12;t++){
+    for(let i=0;i<3;i++){
+      $('r'+i).style.transform=`translateY(${(t%2?10:-10)}px)`;
+    }
+    await new Promise(r=>setTimeout(r,40));
+  }
+  rolls.forEach((s,i)=>setReel(i,s.e));
+  const mul = slotsPayout(rolls);
+  let win = Math.floor(bet*mul);
+  if(mul===0){ $('slotsStatus').textContent='No match — lost'; logLine(`Slots ❌ (-${bet})`); $('revealSrv').textContent=state.serverSeed; }
+  else{ pay(win); $('slotsStatus').textContent=`Win x${mul} → +${fmt(win)}`; logLine(`Slots ✅ x${mul} (+${win})`); sound(1200,.08,'sine'); $('revealSrv').textContent=state.serverSeed; }
+};
+
+/* ========= BLACKJACK ========= */
+let bj={deck:[], player:[], dealer:[], inHand:false, canDouble:false, bet:0};
+function buildDeckHex(){ return Array.from({length:52},(_,i)=>i); }
+function cardFace(i){ // 0..51
+  const ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const suits=['♠','♥','♦','♣'];
+  const r = i%13, s = Math.floor(i/13);
+  return `${ranks[r]}${suits[s]}`;
+}
+function handValue(arr){
+  let total=0, aces=0;
+  arr.forEach(idx=>{
+    const r = idx%13;
+    if(r===0){aces++; total+=11;}
+    else if(r>=10){total+=10;}
+    else total+=(r+1);
+  });
+  while(total>21 && aces>0){ total-=10; aces--; }
+  return total;
+}
+async function shuffleDeck(){
+  // Fisher-Yates with HMAC random
+  bj.deck = buildDeckHex();
+  for(let i=bj.deck.length-1;i>0;i--){
+    const hex = await hmac(state.serverSeed, `${state.clientSeed}:${state.nonce}:BJ:${i}`);
+    const u = rngFromHex(hex);
+    const j = Math.floor(u*(i+1));
+    [bj.deck[i], bj.deck[j]] = [bj.deck[j], bj.deck[i]];
+  }
+}
+function draw(){ return bj.deck.pop(); }
+function renderBJ(){
+  $('player').innerHTML = bj.player.map(c=>`<div class="cardv">${cardFace(c)}</div>`).join('');
+  $('dealer').innerHTML = bj.dealer.map((c,i)=>`<div class="cardv">${i===0 && bj.inHand? '🂠' : cardFace(c)}</div>`).join('');
+  $('playerVal').textContent = bj.inHand? handValue(bj.player) : '—';
+  $('dealerVal').textContent = bj.inHand? '??' : (bj.dealer.length? handValue(bj.dealer) : '—');
+}
+function endBJ(msg, payoutMul){
+  bj.inHand=false;
+  const dVal=handValue(bj.dealer);
+  const pVal=handValue(bj.player);
+  $('bjStatus').textContent = msg;
+  if(payoutMul>0){ const win=Math.floor(bj.bet*payoutMul); pay(win); logLine(`Blackjack ✅ ${msg} (+${win})`); sound(1200,.08,'sine');}
+  else if(payoutMul===0){ logLine(`Blackjack 〰️ Push`); }
+  else { logLine(`Blackjack ❌ ${msg} (-${bj.bet})`); }
+  $('revealSrv').textContent = state.serverSeed;
+}
+$('bjDeal').onclick=async ()=>{
+  if(!incPlay()) return;
+  const bet=Math.max(1,+$('bet').value||0);
+  if(!spend(bet)) return;
+  state.nonce++; $('nonce').textContent=String(state.nonce);
+  await shuffleDeck();
+  bj.player=[draw(),draw()]; bj.dealer=[draw(),draw()];
+  bj.inHand=true; bj.bet=bet; bj.canDouble=true;
+  $('bjStatus').textContent='Hit/Stand?'; renderBJ();
+  // Check natural blackjack
+  const pv=handValue(bj.player), dv=handValue(bj.dealer);
+  if(pv===21||dv===21){
+    // Reveal dealer
+    bj.inHand=false; renderBJ();
+    if(pv===21 && dv!==21){ endBJ('Blackjack! 3:2', 2.5); }
+    else if(pv!==21 && dv===21){ endBJ('Dealer Blackjack', -1); }
+    else { endBJ('Push', 0); }
+  }
+};
+$('bjHit').onclick=()=>{
+  if(!bj.inHand) return;
+  bj.player.push(draw()); bj.canDouble=false; renderBJ();
+  const pv=handValue(bj.player); if(pv>21){ bj.inHand=false; renderBJ(); endGameloopDealer('Player bust'); }
+};
+$('bjDouble').onclick=()=>{
+  if(!bj.inHand || !bj.canDouble) return;
+  if(!spend(bj.bet)) return; // double bet
+  bj.bet*=2; bj.player.push(draw()); bj.canDouble=false; renderBJ();
+  endGameloopDealer('Double — resolving…');
+};
+$('bjStand').onclick=()=>{ if(bj.inHand){ endGameloopDealer('Stand — resolving…'); } };
+
+function endGameloopDealer(msg){
+  $('bjStatus').textContent=msg; bj.inHand=false; // reveal hole card
+  // Dealer draws to 17
+  while(handValue(bj.dealer)<17){ bj.dealer.push(draw()); }
+  renderBJ();
+  const p=handValue(bj.player), d=handValue(bj.dealer);
+  if(p>21) return endBJ('You bust', -1);
+  if(d>21) return endBJ('Dealer bust — you win', 2);
+  if(p>d) return endBJ('You win', 2);
+  if(p<d) return endBJ('Dealer wins', -1);
+  return endBJ('Push', 0);
+}
+
+/* ========= DICE ========= */
+function updateDicePayout(){
+  const X = clamp(+$('diceTarget').value, 2, 98);
+  $('diceTarget').value = X;
+  const payout = 0.99*(100/(X-0.01));
+  $('dicePayout').textContent = payout.toFixed(2)+'×';
+}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+$('diceTarget').oninput=updateDicePayout; updateDicePayout();
+
+$('diceRoll').onclick=async ()=>{
+  if(!incPlay()) return;
+  const bet=Math.max(1,+$('bet').value||0);
+  if(!spend(bet)) return;
+  state.nonce++; $('nonce').textContent=String(state.nonce);
+  const hex=await hmac(state.serverSeed, `${state.clientSeed}:${state.nonce}:DICE`);
+  const u=rngFromHex(hex);
+  const roll=(u*100).toFixed(2); // 0..100
+  const target=+$('diceTarget').value;
+  const win = (roll < target);
+  const payout = 0.99*(100/(target-0.01));
+  $('diceResult').textContent = roll;
+  if(win){
+    const prize = Math.floor(bet*payout);
+    pay(prize); $('diceStatus').textContent = `Win! +${fmt(prize)} @ ${payout.toFixed(2)}×`;
+    logLine(`Dice ✅ ${roll} < ${target} (+${prize})`); sound(1100,.07,'sine');
+  }else{
+    $('diceStatus').textContent = `Lose @ ${roll}`;
+    logLine(`Dice ❌ ${roll} ≥ ${target} (-${bet})`);
+  }
+  $('revealSrv').textContent = state.serverSeed;
+};
+
+/* ========= Init ========= */
+(async function init(){
+  await newSeeds();
+  $('bal').textContent=fmt(state.bal);
+  $('playsUsed').textContent=state.plays;
+  $('playsMax').textContent=state.playsMax;
+})();
+
+/* ========= Quality-of-life ========= */
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) { /* could auto-pause future timers */ }});
+</script>
+</body>
+</html>
