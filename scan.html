@@ -1,486 +1,88 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Mythic Eyes: Emotion Awakening</title>
-<meta name="theme-color" content="#0a0f14"/>
 <style>
-  :root{
-    --bg:#070b10; --panel:#0b1420; --ink:#dff7ff; --muted:#8fb3c9;
-    --acc:#00ffc6; --edge:#1a374a; --edge2:#224e65;
-    --good:#24e07a; --warn:#ffd166; --bad:#ff5666;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; background:
-      radial-gradient(1200px 600px at 110% -10%, rgba(0,255,198,.12), transparent),
-      radial-gradient(1000px 500px at -10% 110%, rgba(255,61,129,.10), transparent),
-      #061018; color:var(--ink);
-    font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Noto Color Emoji;
-    overflow:hidden;
-  }
-  header{
-    position:fixed; inset:0 0 auto 0; z-index:20;
-    display:flex; gap:10px; align-items:center; padding:10px 12px;
-    background:linear-gradient(180deg,#08121b,#091621); border-bottom:1px solid var(--edge);
-  }
-  .brand{display:flex; gap:10px; align-items:center}
-  .brand .logo{font-size:22px; filter:drop-shadow(0 0 8px rgba(0,255,198,.35))}
-  h1{margin:0; font-size:16px; letter-spacing:.5px; color:var(--acc)}
-  .right{margin-left:auto; display:flex; gap:8px; align-items:center}
-  .pill{padding:6px 10px; border:1px solid var(--edge2); border-radius:999px; background:#0c1c28; color:#bfeaff; font-size:12px}
-
-  .wrap{position:fixed; inset:52px 0 0 0; display:grid; grid-template-columns:1fr 360px}
-  @media(max-width:1024px){ .wrap{grid-template-columns:1fr} }
-
-  /* Camera + Overlay */
-  .stage{position:relative; background:#000}
-  video, canvas{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
-  #video{transform:scaleX(-1)} /* mirror for selfie by default */
-  .hud{position:absolute; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; gap:8px; pointer-events:none}
-  .tag{background:#0a1722b3; border:1px solid var(--edge2); color:#eaffff; padding:6px 10px; border-radius:10px; font-size:12px}
-
-  /* Control panel */
-  .panel{
-    background:linear-gradient(180deg,#0a141d,#0b1721);
-    border-left:1px solid var(--edge);
-    display:flex; flex-direction:column; gap:10px; padding:12px; overflow:auto;
-  }
-  .card{border:1px solid var(--edge); border-radius:14px; overflow:hidden; background:#0a131c}
-  .card h2{margin:0; padding:10px 12px; border-bottom:1px dashed var(--edge2); font-size:13px; color:#9fe6ff}
-  .pad{padding:10px 12px}
-  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .col{display:flex; flex-direction:column; gap:8px}
-  .btn{cursor:pointer; border:1px solid var(--edge2); background:#0f1e2a; color:#e7fbff; padding:10px 12px; border-radius:12px; transition:.15s transform}
-  .btn:active{transform:translateY(1px)}
-  .btn.primary{background:linear-gradient(180deg,#00ffc6,#00d3a7); color:#00332a; border-color:#00d3b7; font-weight:800}
-  .btn.ghost{background:transparent}
-  .btn.warn{background:#2b1f0b; border-color:#6b4d1a; color:#ffe7b3}
-  select,input[type=range]{width:100%; accent-color:#00e6be}
-  input[type=range]{appearance:none; height:4px; background:#122a3a; border-radius:999px}
-  input[type=range]::-webkit-slider-thumb{appearance:none; width:18px; height:18px; border-radius:50%; background:#00ffc6; border:2px solid #003229}
-  .muted{color:var(--muted); font-size:12px}
-
-  .thumbs{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
-  .thumb{aspect-ratio:1/1; border:1px solid var(--edge); border-radius:10px; overflow:hidden; background:#08131c; display:grid; place-items:center; cursor:pointer}
-  .thumb.active{box-shadow:0 0 0 2px #00ffc6 inset}
-  .eyesLegend{display:grid; grid-template-columns:1fr 1fr; gap:8px}
-  .eyesLegend div{background:#08131c; border:1px solid var(--edge); border-radius:8px; padding:8px; font-size:12px}
-
-  /* Toast */
-  .toast{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#081620; color:#defcff; border:1px solid var(--edge2); border-radius:12px; padding:10px 14px; box-shadow:0 10px 30px rgba(0,0,0,.45); opacity:0; pointer-events:none; transition:.18s opacity,.18s transform; z-index:40}
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
+body{margin:0;overflow:hidden;background:#000;color:#fff;font-family:sans-serif}
+video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#video{transform:scaleX(-1)} /* mirror selfie */
+#status{position:fixed;top:8px;left:50%;transform:translateX(-50%);
+  background:#0008;padding:6px 10px;border-radius:8px;font-size:14px}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand"><div class="logo">👁️‍🗨️</div><h1>Mythic Eyes: Emotion Awakening</h1><div class="pill">on-device AR</div></div>
-  <div class="right">
-    <div id="status" class="pill">Loading…</div>
-    <button id="switchCam" class="btn ghost">🔁 Camera</button>
-    <button id="mirrorBtn" class="btn ghost">🪞 Mirror</button>
-    <button id="shotBtn" class="btn primary">📸 Capture</button>
-  </div>
-</header>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="fx"></canvas>
+<div id="status">Loading…</div>
 
-<div class="wrap">
-  <section class="stage">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="fx"></canvas>
-    <div class="hud">
-      <div class="tag">Emotion: <b id="emo">—</b></div>
-      <div class="tag">Persona: <b id="personaNow">Auto</b></div>
-    </div>
-  </section>
-
-  <aside class="panel">
-    <div class="card">
-      <h2>Persona & Emotion</h2>
-      <div class="pad col">
-        <div class="row">
-          <label class="muted">Mode</label>
-          <select id="personaSel">
-            <option value="auto">Auto (map from emotion)</option>
-            <option value="apollo">Apollo — radiant gold</option>
-            <option value="odin">Odin — icy blue</option>
-            <option value="hades">Hades — void purple</option>
-            <option value="shiva">Shiva — sapphire</option>
-            <option value="medusa">Medusa — emerald</option>
-            <option value="ra">Ra — sunfire</option>
-            <option value="amaterasu">Amaterasu — white sun</option>
-            <option value="anubis">Anubis — amber</option>
-          </select>
-        </div>
-        <div class="eyesLegend">
-          <div>Auto mapping:<br/>
-            😊 Happy → Apollo<br/>
-            😡 Angry → Ares/Anubis<br/>
-            😮 Surprise → Zeus/Odin<br/>
-            😐 Neutral/Calm → Athena/Shiva<br/>
-            😢 Sad → Hades<br/>
-            😨 Fear → Medusa
-          </div>
-          <div>Tips:<br/>Good light • Face camera • Keep eyes visible • Blink naturally</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Eye FX Settings</h2>
-      <div class="pad col">
-        <div><span class="muted">Glow Intensity</span><input id="intensity" type="range" min="0" max="1.5" step="0.05" value="0.9"/></div>
-        <div><span class="muted">Iris Size</span><input id="iris" type="range" min="0.8" max="2.0" step="0.05" value="1.1"/></div>
-        <div><span class="muted">Bloom</span><input id="bloom" type="range" min="0" max="1.5" step="0.05" value="1.0"/></div>
-        <div class="row">
-          <button id="toggleSparks" class="btn">✨ Sparks On</button>
-          <button id="toggleAura" class="btn">🜂 Aura On</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Gallery</h2>
-      <div class="pad">
-        <div id="gallery" class="thumbs"></div>
-        <div class="muted" style="margin-top:6px">Captures are stored only on your device.</div>
-      </div>
-    </div>
-  </aside>
-</div>
-
-<div id="toast" class="toast">Toast</div>
-
-<!-- Face Landmarker (MediaPipe Tasks Vision) -->
 <script type="module">
-/**
- * Mythic Eyes — single-file industry-grade web AR scanner
- * - MediaPipe Face Landmarker (blendshapes on-device)
- * - Emotion mapping → persona colorways
- * - Additive eye glow, bloom, sparks, aura
- * - Camera switching, mirroring, capture & gallery
- */
+import {FaceLandmarker, FilesetResolver} from 
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
-import {FaceLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+const video=document.getElementById("video");
+const fx=document.getElementById("fx");
+const ctx=fx.getContext("2d");
+const status=document.getElementById("status");
 
-const els = {
-  video: document.getElementById('video'),
-  fx: document.getElementById('fx'),
-  emo: document.getElementById('emo'),
-  personaNow: document.getElementById('personaNow'),
-  personaSel: document.getElementById('personaSel'),
-  status: document.getElementById('status'),
-  intensity: document.getElementById('intensity'),
-  iris: document.getElementById('iris'),
-  bloom: document.getElementById('bloom'),
-  toggleSparks: document.getElementById('toggleSparks'),
-  toggleAura: document.getElementById('toggleAura'),
-  switchCam: document.getElementById('switchCam'),
-  mirrorBtn: document.getElementById('mirrorBtn'),
-  shotBtn: document.getElementById('shotBtn'),
-  gallery: document.getElementById('gallery'),
-  toast: document.getElementById('toast')
-};
-const ctx = els.fx.getContext('2d', {alpha:true, desynchronized:true, willReadFrequently:false});
+let landmarker,lastVideoTime=0;
 
-let landmarker;
-let running = true;
-let facingMode = "user";      // front camera by default
-let mirrored = true;
-let lastVideoTime = 0;
-let sparkOn = true, auraOn = true;
-
-// Persona definitions (eye color, rim, aura color, sparks)
-const PERSONAS = {
-  apollo:   {iris:"#ffd166", rim:"#fff6a8", aura:"#ffbf69", spark:"#ffe29e"},
-  odin:     {iris:"#78d4ff", rim:"#c6f1ff", aura:"#7fd2ff", spark:"#bbecff"},
-  hades:    {iris:"#9b72ff", rim:"#e0d1ff", aura:"#b18dff", spark:"#d8c6ff"},
-  shiva:    {iris:"#5ab3ff", rim:"#c2e7ff", aura:"#5ac8ff", spark:"#a9e1ff"},
-  medusa:   {iris:"#3ee486", rim:"#c8ffd1", aura:"#58ffb0", spark:"#caffd8"},
-  ra:       {iris:"#ffb200", rim:"#ffe69b", aura:"#ff9d00", spark:"#ffd24d"},
-  amaterasu:{iris:"#ffffff", rim:"#ffffff", aura:"#fff7d1", spark:"#ffffff"},
-  anubis:   {iris:"#ff8c2a", rim:"#ffd2a3", aura:"#ff9e4d", spark:"#ffd9a8"},
-  ares:     {iris:"#ff4757", rim:"#ffc2c7", aura:"#ff6b6b", spark:"#ffc4c7"},
-  athena:   {iris:"#b7c6d9", rim:"#eaf2ff", aura:"#bcd0e8", spark:"#e9f3ff"},
-  zeus:     {iris:"#9be7ff", rim:"#e7fbff", aura:"#a1e9ff", spark:"#e6fbff"}
-};
-
-// Emotion → persona map (auto)
-function personaFromEmotion(e){
-  switch(e){
-    case "happy": return "apollo";
-    case "angry": return "ares";
-    case "surprised": return "zeus";
-    case "sad": return "hades";
-    case "fearful": return "medusa";
-    case "disgusted": return "anubis";
-    case "neutral":
-    default: return "shiva";
-  }
-}
-
-// Toast helper
-const toast=(m)=>{ els.toast.textContent=m; els.toast.classList.add('show'); setTimeout(()=>els.toast.classList.remove('show'),1400); };
-
-// Camera
-async function openCamera(){
-  if(!navigator.mediaDevices?.getUserMedia){ els.status.textContent="Camera not supported"; return; }
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode,
-        width: {ideal: 1280}, height: {ideal: 720},
-        frameRate: {ideal: 30, max: 60}
-      },
-      audio:false
-    });
-    els.video.srcObject = stream;
-    await els.video.play();
-    sizeCanvas();
-    els.status.textContent = "Camera ready";
-  }catch(e){
-    console.error(e); els.status.textContent="Camera permission denied";
-  }
-}
-function sizeCanvas(){
-  const rect = els.fx.getBoundingClientRect();
-  els.fx.width = rect.width * devicePixelRatio;
-  els.fx.height = rect.height * devicePixelRatio;
-  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-}
-
-// Landmarker init
 async function initFace(){
-  els.status.textContent="Loading face model…";
-  const fileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-  landmarker = await FaceLandmarker.createFromOptions(fileset, {
-    baseOptions: {
-      modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/face_landmarker.task"
-    },
-    runningMode: "VIDEO",
-    numFaces: 1,
-    outputFaceBlendshapes: true
+  const fileset=await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  landmarker=await FaceLandmarker.createFromOptions(fileset,{
+    baseOptions:{modelAssetPath:
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/face_landmarker.task"},
+    runningMode:"VIDEO",numFaces:1,outputFaceBlendshapes:true
   });
-  els.status.textContent="Point your camera at your face";
+  status.textContent="Face model ready";
 }
 
-// Emotion estimator from blendshapes
-function estimateEmotion(blendshapes){
-  if(!blendshapes?.categories?.length) return {label:"neutral", score:0};
-  const get = (name)=>blendshapes.categories.find(c=>c.categoryName===name)?.score||0;
-  const smile = (get("mouthSmileLeft")+get("mouthSmileRight"))/2;
-  const mouthOpen = get("jawOpen");
-  const eyeWide = (get("eyeWideLeft")+get("eyeWideRight"))/2;
-  const browDown = (get("browDownLeft")+get("browDownRight"))/2;
-  const mouthFrown = (get("mouthFrownLeft")+get("mouthFrownRight"))/2;
-  const browUp = get("browInnerUp");
-
-  const scores = {
-    happy: smile*0.7 + Math.max(0, mouthOpen-0.2)*0.3,
-    surprised: eyeWide*0.6 + mouthOpen*0.6,
-    angry: browDown*0.7 + Math.max(0, 0.3-mouthOpen)*0.3 + mouthFrown*0.2,
-    sad: mouthFrown*0.6 + Math.max(0, 0.4-browUp)*0.4,
-    fearful: eyeWide*0.5 + browUp*0.5 + Math.max(0,0.4-smile)*0.3,
-    disgusted: (get("noseSneerLeft")+get("noseSneerRight"))/2 + mouthFrown*0.5,
-    neutral: 0.3 // base
-  };
-  // pick max
-  let best="neutral", val=0;
-  for(const [k,v] of Object.entries(scores)){ if(v>val){ val=v; best=k; } }
-  return {label:best, score:val};
+async function openCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}});
+    video.srcObject=stream;
+    video.onloadedmetadata=()=>{
+      video.play();
+      fx.width=video.videoWidth; fx.height=video.videoHeight;
+      status.textContent="Camera ready";
+      requestAnimationFrame(loop);
+    };
+  }catch(e){status.textContent="Camera denied";}
 }
 
-// Utilities
-function lerp(a,b,t){return a+(b-a)*t;}
-function dist(ax,ay,bx,by){const dx=ax-bx, dy=ay-by; return Math.hypot(dx,dy);}
-function hexToRGB(hex){
-  const h = hex.replace('#',''); const n = parseInt(h,16);
-  return {r:(n>>16)&255, g:(n>>8)&255, b:n&255};
-}
-
-// Render eyes + fx
-function renderFX(landmarks, personaKey){
-  const W = els.fx.width / devicePixelRatio;
-  const H = els.fx.height / devicePixelRatio;
-  ctx.clearRect(0,0,W,H);
-
+function renderEyes(landmarks){
+  ctx.clearRect(0,0,fx.width,fx.height);
   if(!landmarks?.length) return;
+  const pts=landmarks[0];
+  const L=pts[468]||pts[159],R=pts[473]||pts[386];
+  if(!L||!R) return;
+  const lx=L.x*fx.width,ly=L.y*fx.height;
+  const rx=R.x*fx.width,ry=R.y*fx.height;
+  drawGlow(lx,ly,"#ffd166");
+  drawGlow(rx,ry,"#ffd166");
+}
+function drawGlow(x,y,color){
+  const r=30,g=ctx.createRadialGradient(x,y,5,x,y,r);
+  g.addColorStop(0,color); g.addColorStop(1,"transparent");
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fill();
+}
 
-  const pts = landmarks[0]; // 468/478 points
-  // Iris centers (MediaPipe indices 468 = left center, 473 = right center)
-  const Lc = pts[468] || pts[468-10] || pts[159];
-  const Rc = pts[473] || pts[473-10] || pts[386];
-  if(!Lc || !Rc) return;
-
-  // Project normalized coords (0..1) to canvas
-  const lx = Lc.x * W, ly = Lc.y * H;
-  const rx = Rc.x * W, ry = Rc.y * H;
-
-  // Estimate iris radius using nearby iris ring points
-  const lR = pts[469] && dist(lx,ly, pts[469].x*W, pts[469].y*H) || 8;
-  const rR = pts[474] && dist(rx,ry, pts[474].x*W, pts[474].y*H) || 8;
-
-  // Persona colors
-  const P = PERSONAS[personaKey] || PERSONAS["shiva"];
-  const INT = parseFloat(els.intensity.value);
-  const IRS = parseFloat(els.iris.value);
-  const BLO = parseFloat(els.bloom.value);
-
-  const irisR = lR*IRS, irisR2 = rR*IRS;
-
-  // Additive blend for glow
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-
-  // Draw per-eye radial gradient iris + rim + bloom
-  function eyeGlow(x,y,r){
-    // inner iris
-    const g1 = ctx.createRadialGradient(x,y, r*0.1, x,y, r*1.1);
-    const cI = hexToRGB(P.iris); const cR = hexToRGB(P.rim);
-    g1.addColorStop(0, `rgba(${cI.r},${cI.g},${cI.b},${0.65*INT})`);
-    g1.addColorStop(0.6, `rgba(${cR.r},${cR.g},${cR.b},${0.35*INT})`);
-    g1.addColorStop(1, `rgba(${cR.r},${cR.g},${cR.b},0)`);
-    ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(x,y,r*1.1,0,Math.PI*2); ctx.fill();
-
-    // bloom halo
-    if(BLO>0.01){
-      const g2 = ctx.createRadialGradient(x,y, r*0.8, x,y, r*(2.6+BLO));
-      g2.addColorStop(0, `rgba(${cR.r},${cR.g},${cR.b},${0.18*BLO})`);
-      g2.addColorStop(1, `rgba(${cR.r},${cR.g},${cR.b},0)`);
-      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(x,y,r*(2.6+BLO),0,Math.PI*2); ctx.fill();
+function loop(){
+  if(video.readyState>=2&&landmarker){
+    if(video.currentTime!==lastVideoTime){
+      lastVideoTime=video.currentTime;
+      const res=landmarker.detectForVideo(video,performance.now());
+      renderEyes(res.faceLandmarks);
     }
   }
-  eyeGlow(lx,ly,irisR);
-  eyeGlow(rx,ry,irisR2);
-
-  // Sparks (random small orbs drifting from eyes)
-  if(sparkOn){
-    for(let i=0;i<6;i++){
-      const jitter = (Math.random()-0.5)*8;
-      spark(xrand(lx,8)+jitter, yrand(ly,8)+jitter, P.spark);
-      spark(xrand(rx,8)+jitter, yrand(ry,8)+jitter, P.spark);
-    }
-  }
-
-  // Aura (soft gradient around face center)
-  if(auraOn){
-    const cx = (lx+rx)/2, cy = (ly+ry)/2;
-    const faceW = Math.abs(rx-lx)*3.2;
-    const C = hexToRGB(P.aura);
-    const g3 = ctx.createRadialGradient(cx,cy, faceW*0.2, cx,cy, faceW*1.8);
-    g3.addColorStop(0, `rgba(${C.r},${C.g},${C.b},0.10)`);
-    g3.addColorStop(1, `rgba(${C.r},${C.g},${C.b},0)`);
-    ctx.fillStyle=g3; ctx.beginPath(); ctx.arc(cx,cy, faceW*1.8,0,Math.PI*2); ctx.fill();
-  }
-
-  ctx.restore();
-
-  // Helper spark
-  function spark(x,y,color){
-    const c = hexToRGB(color);
-    ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${0.25 + Math.random()*0.35})`;
-    const r = 2 + Math.random()*3;
-    ctx.beginPath(); ctx.arc(x + Math.random()*6-3, y + Math.random()*6-3, r, 0, Math.PI*2); ctx.fill();
-  }
-  function xrand(x,a){return x + (Math.random()-0.5)*a;}
-  function yrand(y,a){return y + (Math.random()-0.5)*a;}
+  requestAnimationFrame(loop);
 }
 
-// Main loop
-async function predictLoop(){
-  if(!running){ requestAnimationFrame(predictLoop); return; }
-  const now = els.video.currentTime;
-  if(now !== lastVideoTime){
-    lastVideoTime = now;
-    const res = landmarker.detectForVideo(els.video, performance.now());
-    const landmarks = res.faceLandmarks;
-    const blend = res.faceBlendshapes?.[0];
-    // Emotion
-    let emo = "neutral";
-    if(blend){ const est = estimateEmotion(blend); emo = est.label; }
-    els.emo.textContent = emo.toUpperCase();
-
-    // Persona
-    const selectVal = els.personaSel.value;
-    const personaKey = (selectVal==="auto") ? personaFromEmotion(emo) : selectVal;
-    els.personaNow.textContent = personaKey.charAt(0).toUpperCase()+personaKey.slice(1);
-
-    renderFX(landmarks, personaKey);
-  }
-  requestAnimationFrame(predictLoop);
-}
-
-/* ===== UI ===== */
-window.addEventListener('resize', sizeCanvas);
-els.switchCam.addEventListener('click', async ()=>{
-  facingMode = (facingMode==="user") ? "environment" : "user";
-  mirrored = (facingMode==="user");
-  els.video.style.transform = mirrored ? "scaleX(-1)" : "scaleX(1)";
-  await stopCamera(); await openCamera();
-});
-els.mirrorBtn.addEventListener('click', ()=>{
-  mirrored = !mirrored; els.video.style.transform = mirrored ? "scaleX(-1)" : "scaleX(1)";
-});
-els.personaSel.addEventListener('change', ()=>{ /* live update via loop */ });
-
-els.toggleSparks.addEventListener('click', ()=>{
-  sparkOn = !sparkOn; els.toggleSparks.textContent = sparkOn ? "✨ Sparks On" : "✨ Sparks Off";
-});
-els.toggleAura.addEventListener('click', ()=>{
-  auraOn = !auraOn; els.toggleAura.textContent = auraOn ? "🜂 Aura On" : "🜂 Aura Off";
-});
-
-// Capture
-els.shotBtn.addEventListener('click', ()=>{
-  const tmp = document.createElement('canvas');
-  // compose video + fx into one image at display resolution
-  const r = els.fx.getBoundingClientRect();
-  tmp.width = r.width * devicePixelRatio; tmp.height = r.height * devicePixelRatio;
-  const tctx = tmp.getContext('2d');
-  // draw video
-  tctx.save();
-  // Draw current video frame respecting mirror
-  if(mirrored){
-    tctx.translate(tmp.width,0); tctx.scale(-1,1);
-  }
-  tctx.drawImage(els.video, 0, 0, tmp.width, tmp.height);
-  tctx.restore();
-  // draw overlay
-  tctx.drawImage(els.fx, 0, 0, tmp.width, tmp.height);
-
-  tmp.toBlob(b=>{
-    const url = URL.createObjectURL(b);
-    addThumb(url);
-    // auto-download high-res still
-    const a = document.createElement('a'); a.href=url; a.download=`mythic_eyes_${Date.now()}.png`; a.click();
-    URL.revokeObjectURL(a.href);
-    toast("Captured!");
-  }, "image/png");
-});
-
-function addThumb(url){
-  const d = document.createElement('div'); d.className="thumb";
-  const img = new Image(); img.src = url; img.style.width="100%"; img.style.height="100%"; img.style.objectFit="cover";
-  d.appendChild(img);
-  d.onclick = ()=>{ const a=document.createElement('a'); a.href=url; a.download='mythic_eyes.png'; a.click(); };
-  els.gallery.prepend(d);
-}
-
-function toast(m){ els.toast.textContent=m; els.toast.classList.add('show'); setTimeout(()=>els.toast.classList.remove('show'), 1400); }
-
-// Stop camera
-async function stopCamera(){
-  const s = els.video.srcObject;
-  if(s){ s.getTracks().forEach(t=>t.stop()); els.video.srcObject = null; }
-}
-
-/* ===== Boot ===== */
-(async function boot(){
+(async function(){
   await initFace();
   await openCamera();
-  sizeCanvas();
-  requestAnimationFrame(predictLoop);
 })();
 </script>
 </body>
